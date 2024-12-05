@@ -92,7 +92,6 @@ export class FrameworkCodeFragment implements IDataStorage {
 							}
 						}
 
-						let codeTemp = frameworkCodeFragmentNode.text;
 						for (let i = 0; i < frameworkCodeFragmentNode.children.length; i++) {
 							if (frameworkCodeFragmentNode.children[i].type == 'declaration_list') {
 								let declarationList = frameworkCodeFragmentNode.children[i];
@@ -103,20 +102,19 @@ export class FrameworkCodeFragment implements IDataStorage {
 										declarationList.children[j].type == 'constructor_declaration'
 									) {
 										let node = declarationList.children[j];
-										let block: SyntaxNode | undefined = undefined;
+										let body: SyntaxNode | undefined = undefined;
 										let isPublic = false;
 										for (let k = 0; k < node.children.length; k++) {
 											let nodeChild = node.children[k];
 											if (nodeChild.type == 'modifier') {
 												if (nodeChild.text != 'public') {
 													isPublic = false;
-													codeTemp = codeTemp.replace(node.text, '');
 												} else {
 													isPublic = true;
 												}
 											}
-											if (nodeChild.type == 'block' && isPublic) {
-												block = node.children[k];
+											if (nodeChild.type == 'block' || (nodeChild.type == 'arrow_expression_clause' && isPublic)) {
+												body = node.children[k];
 											}
 										}
 										if (!isPublic) {
@@ -130,10 +128,13 @@ export class FrameworkCodeFragment implements IDataStorage {
 												}
 											}
 											needDeleteNodes.push(node);
-										} else if (block) {
-											needDeleteNodes.push(block);
+										} else if (body) {
+											needDeleteNodes.push(body);
 										}
-									} else if (declarationList.children[j].type == 'property_declaration') {
+									} else if (
+										declarationList.children[j].type == 'property_declaration' ||
+										declarationList.children[j].type == 'indexer_declaration'
+									) {
 										let node = declarationList.children[j];
 										let isPublic = false;
 										for (let k = 0; k < node.children.length; k++) {
@@ -168,6 +169,9 @@ export class FrameworkCodeFragment implements IDataStorage {
 														}
 													}
 												}
+											}
+											if (nodeChild.type == 'arrow_expression_clause' && isPublic) {
+												needDeleteNodes.push(nodeChild);
 											}
 										}
 									}
@@ -247,17 +251,52 @@ class TreeSitterContentModifier {
 
 		// 从后往前移除子节点的内容
 		for (let i = 0; i < children.length; i++) {
+			let child = children[i];
 			let startIndex = children[i].startIndex;
 			let endIndex = children[i].endIndex;
-			let endNote = rootContent.charAt(endIndex);
-			let startNote = rootContent.charAt(startIndex);
+
 			while (endIndex < rootContent.length && /\s/.test(rootContent[endIndex])) {
 				endIndex++;
 			}
-			// 一次性删除计算出的完整范围
-			rootContent = rootContent.slice(0, startIndex) + rootContent.slice(endIndex);
 
+			// 检查是否满足替换条件
+			if (child.parent && child.parent.type === 'accessor_declaration' && child.type === 'block') {
+				let previousNode = child.previousSibling;
+				let previousEndIndex = previousNode ? previousNode.startIndex + previousNode.text.length : 0;
+				console.log(`block替换前内容：\n${rootContent}`);
+				rootContent = rootContent.slice(0, previousEndIndex) + ';\n\t\t'  + rootContent.slice(endIndex);
+				console.log(`block替换后的内容：\n${rootContent}`);
+				console.log(`block输出完毕`);
+			} else if (
+				child.parent &&
+				(child.parent.type === 'property_declaration' || child.parent.type == 'indexer_declaration') &&
+				child.type === 'arrow_expression_clause'
+			) {
+				// 找到上一个节点的结束位置
+				let previousNode = child.previousSibling;
+				let previousEndIndex = previousNode ? previousNode.startIndex + previousNode.text.length : 0;
+
+				// 删除上一个节点到当前节点之间的内容，并替换为 "{ get; }"
+				// console.log(`替换前内容：\n${rootContent}`);
+				rootContent = rootContent.slice(0, previousEndIndex) + '{ get; }' + rootContent.slice(endIndex);
+				// console.log(`替换后的内容：\n${rootContent}`);
+				// console.log(`输出完毕`);
+			} else {
+				// 一次性删除计算出的完整范围
+				rootContent = rootContent.slice(0, startIndex) + rootContent.slice(endIndex);
+			}
 		}
 		return rootContent;
+	}
+
+	private escapeInvisibleChars(str: string): string {
+		return str
+			.replace(/ /g, '\\s') // 空格
+			.replace(/\t/g, '\\t') // 制表符
+			.replace(/\n/g, '\\n') // 换行符
+			.replace(/\r/g, '\\r') // 回车符
+			.replace(/\f/g, '\\f') // 换页符
+			.replace(/\v/g, '\\v') // 垂直制表符
+			.replace(/\0/g, '\\0'); // 空字符
 	}
 }
