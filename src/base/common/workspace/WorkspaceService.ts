@@ -65,29 +65,23 @@ export class WorkspaceService implements Service {
         // 监听编程语言切换事件
         vscode.window.onDidChangeActiveTextEditor(async editor => {
             if (editor) {
-                await this.loadDataForLanguage(editor.document.languageId);
+							vscode.commands.executeCommand('vscode.executeCodeLensProvider', editor.document.uri);
             }
         });
+				vscode.workspace.onDidSaveTextDocument((document) => {
+					if (document) {
+						vscode.commands.executeCommand('vscode.executeCodeLensProvider', document.uri);
+					}
+			});
+    vscode.workspace.onDidChangeTextDocument((event) => {
+			if (event) {
+				vscode.commands.executeCommand('vscode.executeCodeLensProvider', event.document.uri);
+			}
+	});
     }
 
     private async handleDocumentEvent(document: TextDocument) {
-        // let language = document.languageId;
-        // let workspaceSerializer = new WorkspaceSerializer(document);
-        // if (this._saveDataIdMap.has(language)) {
-        //     let languageDataStorageMap = this._saveDataIdMap.get(language);
-        //     if (languageDataStorageMap != undefined) {
-        //         let dataStorages = languageDataStorageMap.get('CodeSample');
-        //         if (dataStorages != undefined) workspaceSerializer.saveObject(dataStorages, 'CodeSample', language);
-        //     }
-        // }
-        // if (this._saveDataIdMap.has(language)) {
-        //     let languageDataStorageMap = this._saveDataIdMap.get(language);
-        //     if (languageDataStorageMap != undefined) {
-        //         let dataStorages = languageDataStorageMap.get('FrameworkCodeFragment');
-        //         if (dataStorages != undefined)
-        //             workspaceSerializer.saveObject(dataStorages, 'FrameworkCodeFragment', language);
-        //     }
-        // }
+			vscode.commands.executeCommand('vscode.executeCodeLensProvider', document.uri);
     }
 
     private async refreshDataStorageIds(document: TextDocument) {
