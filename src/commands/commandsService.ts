@@ -186,29 +186,7 @@ export class CommandsService {
 		await setTimeout(800);
 		chat.input(`${l10n.t('I got the following error, can you please help explain how to fix it?')}: ${input}`);
 	}
-	async addCodeSample() {
-		const editor = window.activeTextEditor;
-		if (!editor) {
-			return;
-		}
 
-		try {
-			const document = editor.document;
-			const edit = new WorkspaceEdit();
-			const elementBuilder = await createNamedElement(this.autodev.treeSitterFileManager, document);
-			const currentLine = editor.selection.active.line;
-			const ranges = elementBuilder.getElementForAction(currentLine);
-
-			if (ranges.length === 0) {
-				return;
-			}
-
-			await this.autodev.executeAddCodeSampleExecutorAction(document, ranges[0], edit);
-		} catch (error) {
-			logger.error(`Commands error`, error);
-			showErrorMessage('Command Call Error');
-		}
- }
 	async generateMethod() {
 		const editor = window.activeTextEditor;
 		if (!editor) {
