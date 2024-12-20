@@ -431,7 +431,7 @@ export class CommandsService {
 			commands.registerCommand(CMD_QUICK_FIX, this.quickFix, this),
 			commands.registerCommand(CMD_GEN_DOCSTRING, this.generateDocstring, this),
 			commands.registerCommand(CMD_GEN_CODE_METHOD_COMPLETIONS, this.generateMethod, this),
-			commands.registerCommand(CMD_CODELENS_SHOW_CODE_ADD_CODE_SAMPLE,this.addCodeSample,this),
+			//commands.registerCommand(CMD_CODELENS_SHOW_CODE_ADD_CODE_SAMPLE,this.addCodeSample,this),
 			commands.registerCommand(CMD_CREATE_UNIT_TEST, this.generateUnitTest, this),
 			// Codebase Commands
 			commands.registerCommand(CMD_CODEBASE_INDEXING, this.startCodebaseIndexing, this),

@@ -31,8 +31,8 @@ export const CMD_CODELENS_CREATE_UNIT_TEST = 'autodev.codelens.autoTest';
 export const CMD_CODELENS_SHOW_CUSTOM_ACTION = 'autodev.codelens.customAction';
 export const CMD_CODELENS_SHOW_CODE_METHOD_COMPLETIONS = 'autodev.codelens.methodCompletions';
 export const CMD_CODELENS_SHOW_CODE_CLASS_COMPLETIONS = 'autodev.codelens.classCompletions';
-export const CMD_CODELENS_SHOW_CODE_ADD_CODE_SAMPLE = 'autodev.codelen.addCodeSample';
-export const CMD_CODELENS_SHOW_CODE_REMOVE_CODE_SAMPLE = 'autodev.codelen.removeCodeSample';
+export const CMD_CODELENS_SHOW_CODE_ADD_CODE_SAMPLE = 'autodev.codelens.addCodeSample';
+export const CMD_CODELENS_SHOW_CODE_REMOVE_CODE_SAMPLE = 'autodev.codelens.removeCodeSample';
 export const CMD_CODELENS_SHOW_CODE_ADD_FRAMEWORK_CODE_FRAGMENT = 'autodev.codelen.addFrameworkCodeFragment';
 export const CMD_CODELENS_SHOW_CODE_REMOVE_FRAMEWORK_CODE_FRAGMENT = 'autodev.codelen.removeFrameworkCodeFragment';
 // Chat Commands
