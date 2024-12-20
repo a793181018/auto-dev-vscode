@@ -103,17 +103,15 @@ export class FrameworkCodeFragment implements IDataStorage {
 									) {
 										let node = declarationList.children[j];
 										let body: SyntaxNode | undefined = undefined;
-										let isPublic = false;
+										let isPublic: boolean = false;
 										for (let k = 0; k < node.children.length; k++) {
 											let nodeChild = node.children[k];
 											if (nodeChild.type == 'modifier') {
-												if (nodeChild.text != 'public') {
-													isPublic = false;
-												} else {
+												if (nodeChild.text == 'public') {
 													isPublic = true;
 												}
 											}
-											if (nodeChild.type == 'block' || (nodeChild.type == 'arrow_expression_clause' && isPublic)) {
+											if ((nodeChild.type == 'block' || nodeChild.type == 'arrow_expression_clause') && isPublic) {
 												body = node.children[k];
 											}
 										}
@@ -140,9 +138,7 @@ export class FrameworkCodeFragment implements IDataStorage {
 										for (let k = 0; k < node.children.length; k++) {
 											let nodeChild = node.children[k];
 											if (nodeChild.type == 'modifier') {
-												if (nodeChild.text != 'public') {
-													isPublic = false;
-												} else {
+												if (nodeChild.text == 'public') {
 													isPublic = true;
 												}
 											}
@@ -185,7 +181,6 @@ export class FrameworkCodeFragment implements IDataStorage {
 						// 计算删除范围并删除节点内容
 						let treeSitterContentModifier = new TreeSitterContentModifier(frameworkCodeFragmentNode.tree.rootNode);
 						let result = treeSitterContentModifier.removeChildContent(needDeleteNodes);
-						console.log(result);
 						this.code = result;
 				}
 			}
@@ -262,25 +257,46 @@ class TreeSitterContentModifier {
 			// 检查是否满足替换条件
 			if (child.parent && child.parent.type === 'accessor_declaration' && child.type === 'block') {
 				let previousNode = child.previousSibling;
-				let previousEndIndex = previousNode ? previousNode.startIndex + previousNode.text.length : 0;
-				console.log(`block替换前内容：\n${rootContent}`);
-				rootContent = rootContent.slice(0, previousEndIndex) + ';\n\t\t'  + rootContent.slice(endIndex);
-				console.log(`block替换后的内容：\n${rootContent}`);
-				console.log(`block输出完毕`);
-			} else if (
-				child.parent &&
-				(child.parent.type === 'property_declaration' || child.parent.type == 'indexer_declaration') &&
-				child.type === 'arrow_expression_clause'
-			) {
-				// 找到上一个节点的结束位置
-				let previousNode = child.previousSibling;
-				let previousEndIndex = previousNode ? previousNode.startIndex + previousNode.text.length : 0;
+				let previousEndIndex = previousNode ? previousNode.endIndex : 0;
+				const char = rootContent.charAt(previousEndIndex);
+				console.log(this.escapeInvisibleChars(char));
+				if (char == '\t') {
+					previousEndIndex = previousEndIndex - 1;
+				}
+				rootContent = rootContent.slice(0, previousEndIndex) + ';\n\t\t' + rootContent.slice(endIndex);
+			} else if (child.parent && child.type === 'arrow_expression_clause') {
+				if (child.parent.type === 'property_declaration' || child.parent.type == 'indexer_declaration') {
+					let previousNode = child.previousSibling;
+					let previousEndIndex = previousNode ? previousNode.endIndex : 0;
 
-				// 删除上一个节点到当前节点之间的内容，并替换为 "{ get; }"
-				// console.log(`替换前内容：\n${rootContent}`);
-				rootContent = rootContent.slice(0, previousEndIndex) + '{ get; }' + rootContent.slice(endIndex);
-				// console.log(`替换后的内容：\n${rootContent}`);
-				// console.log(`输出完毕`);
+					// 删除上一个节点到当前节点之间的内容，并替换为 "{ get; }"
+					rootContent = rootContent.slice(0, previousEndIndex) + '{ get; }' + rootContent.slice(endIndex);
+				}else if (child.parent.type === 'method_declaration') {
+					let previousNode = child.previousSibling;
+					let previousEndIndex = previousNode ? previousNode.endIndex : 0;
+					const char = rootContent.charAt(previousEndIndex);
+					if (char == '\t') {
+						previousEndIndex = previousEndIndex - 1;
+					}
+					rootContent = rootContent.slice(0, previousEndIndex) + rootContent.slice(endIndex);
+				}
+
+
+				// 找到上一个节点的结束位置
+			} else if (child.parent && child.parent.type === 'method_declaration') {
+				if (child.type === 'block') {
+					let previousNode = child.previousSibling;
+					let previousEndIndex = previousNode ? previousNode.endIndex : 0;
+					const char = rootContent.charAt(previousEndIndex);
+					if (char == '\t') {
+						previousEndIndex = previousEndIndex - 1;
+					}
+					rootContent = rootContent.slice(0, previousEndIndex) + ';\n' + rootContent.slice(endIndex);
+				}
+			} else if (child.parent && child.type === 'field_declaration') {
+				let previousNode = child.previousSibling;
+				let previousEndIndex = previousNode ? previousNode.endIndex : 0;
+				rootContent = rootContent.slice(0, previousEndIndex) + rootContent.slice(endIndex);
 			} else {
 				// 一次性删除计算出的完整范围
 				rootContent = rootContent.slice(0, startIndex) + rootContent.slice(endIndex);
