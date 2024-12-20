@@ -22,6 +22,7 @@ export class CsharpMethodInfo extends MethodInfoBase {
 		this.returnType = methodNameAndReturnType[0];
 		this.methodDoc = methodXmlDocTeam.reverse().toString();
 		this.code = methodNode.text;
+		this.codeBody= this.getCodeBody();
 	}
 	protected override getMethodDoc(): string {
 		return this.getMethodXmlDocTeam(this.node).reverse().toString();
@@ -32,7 +33,15 @@ export class CsharpMethodInfo extends MethodInfoBase {
 	protected override getName(): string {
 		return this.getMethodNameAndReturnType(this.node)[0];
 	}
+protected override getCodeBody(): string {
+	for (const item of this.node.children) {
+			if (item.type === 'block') {
+				return item.text;
+			}
+		}
+		return '';
 
+}
 	// 获取方法的 XML 注释
 	getMethodXmlDocTeam(methodNode: Parser.SyntaxNode): string[] {
 		const xmlDocNode = methodNode.previousSibling;

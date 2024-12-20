@@ -22,6 +22,8 @@ import { CsharpClassExtractor } from 'src/code-context/csharp/model/CsharpClassE
 import { CodeSample } from '../addCodeSamples/AddCodeSampleExecutor';
 import { FrameworkCodeFragment } from 'src/code-context/_base/LanguageModel/ClassElement/FrameworkCodeFragmentExtractorBase';
 import { ClassExtractorFactory } from 'src/code-context/_base/LanguageModel/ClassELementFactory/ClassExtarctorFactory';
+import { MethodInfoBase } from 'src/code-context/_base/LanguageModel/ClassElement/MethodInfoBase';
+import { MethodInfoFactory } from 'src/code-context/_base/LanguageModel/ClassELementFactory/MethodInfoFactory';
 
 export class AutoMethodActionExecutor implements ActionExecutor {
 	type: ActionType = ActionType.AutoDoc;
@@ -72,10 +74,11 @@ export class AutoMethodActionExecutor implements ActionExecutor {
 		{
       codeSamples=this.autodev.workSpace.GetDataStoragesByIds(language,CodeSample.name,codeSampleIds) as CodeSample[]
 		}
-
+   let needCompletedMethud=MethodInfoFactory.createInstance(language,range.node);
 		const templateContext: AutoMethodTemplateContext ={
 			language: language,
 			startSymbol: startSymbol,
+			needCompleteMethod:needCompletedMethud,
 			endSymbol: endSymbol,
 			code: document.getText(range.blockRange),
 			forbiddenRules: [],
@@ -108,7 +111,7 @@ export class AutoMethodActionExecutor implements ActionExecutor {
 
 		let content = await this.promptManager.generateInstruction(ActionType.AutoMethod, templateContext);
 		log(`request: ${content}`);
-		console.log(`generateInstruction: ${content}`);
+		console.log(`输入LLM推理数据: ${content}`);
 
 		let msg: IChatMessage = {
 			role: ChatMessageRole.User,
@@ -122,6 +125,7 @@ export class AutoMethodActionExecutor implements ActionExecutor {
 			const finalText = StreamingMarkdownCodeBlock.parse(doc).text;
 
 			log(`FencedCodeBlock parsed output: ${finalText}`);
+			console.log(`输出LLM推理结果: \n ${finalText}`);
 
 			let codestring = MarkdownTextProcessor.buildDocFromSuggestion(doc, startSymbol, endSymbol);
 

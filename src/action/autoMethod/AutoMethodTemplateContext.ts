@@ -4,6 +4,7 @@ import { FrameworkCodeFragment } from 'src/code-context/_base/LanguageModel/Clas
 
 import { TemplateContext } from '../../prompt-manage/template/TemplateContext';
 import { CodeSample } from '../addCodeSamples/AddCodeSampleExecutor';
+import { MethodInfoBase } from 'src/code-context/_base/LanguageModel/ClassElement/MethodInfoBase';
 
 export abstract class AutoMethodTemplateContext implements TemplateContext {
 	language: string;
@@ -16,9 +17,11 @@ export abstract class AutoMethodTemplateContext implements TemplateContext {
 	classDescriptionInfo?: string;
 	codeSamples?: CodeSample[];
 	customFrameworkCodeFragments?: FrameworkCodeFragment[] | null;
+	needCompleteMethod: MethodInfoBase;
 	constructor(
 		language: string,
 		code: string,
+		needCompleteMethod: MethodInfoBase,
 		chatContext?: string,
 		startSymbol?: string,
 		endSymbol?: string,
@@ -27,6 +30,7 @@ export abstract class AutoMethodTemplateContext implements TemplateContext {
 		classDescriptionInfo?: string,
 		codeSamples?: CodeSample[],
 		customFrameworkCodeFragments?: FrameworkCodeFragment[] | null,
+
 	) {
 		this.language = language;
 		this.chatContext = chatContext; // TODO: check if this is a valid chat context
@@ -38,5 +42,6 @@ export abstract class AutoMethodTemplateContext implements TemplateContext {
 		this.classDescriptionInfo = classDescriptionInfo;
 		this.codeSamples = codeSamples;
 		this.customFrameworkCodeFragments = customFrameworkCodeFragments;
+		this.needCompleteMethod = needCompleteMethod;
 	}
 }

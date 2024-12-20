@@ -11,6 +11,7 @@ export abstract class MethodInfoBase extends ElementBase
 	methodDoc: string= "";
 	code:string= "";
 	modifiers: string[] = [];
+	codeBody: string= "";
 
 	public constructor(methodNode: Parser.SyntaxNode) {
 			super(methodNode);
@@ -18,6 +19,7 @@ export abstract class MethodInfoBase extends ElementBase
 	protected abstract getMethodDoc(): string;
 	protected abstract getParameters(): IParameterInfo[];
 	protected abstract getName(): string;
+	protected abstract getCodeBody(): string;
 
 }
 export interface IParameterInfo {
