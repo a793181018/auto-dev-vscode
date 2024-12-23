@@ -305,6 +305,12 @@ export class ContinueViewProvider extends AbstractWebviewViewProvider implements
 								this.workSpace.DataStorageGroupManager?.SetSelectedGroup(payload.data.groupName);
 							}
 							break;
+						case 'WorkspaceService.Groups.AddGroupItems':
+							if (language) {
+								let itemIds:number[] = JSON.parse(payload.data.itemIdsJsonString);
+								this.workSpace.DataStorageGroupManager?.AddGroupItems(payload.data.groupName, payload.data.key, itemIds);
+							}
+							break;
 					case 'WorkspaceService.Groups.GetSelectedGroupName':
 						if (language) {
 							let data=	this.workSpace.DataStorageGroupManager?.GetSelectedGroupName();

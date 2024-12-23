@@ -165,8 +165,9 @@ const CodeContextPanel: React.FC = () => {
 	const [showGroupNameModal, setShowGroupNameModal] = useState(false);
 	const [groupName, setGroupName] = useState('');
 	const [isDataLoaded, setIsDataLoaded] = useState(false);
-	const [selectedGroup, setSelectedGroup] = useState<string | null>(null); // 添加 selectedGroup 状态
-
+	const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+	const [showCodeGlobally, setShowCodeGlobally] = useState(true);
+	const [showCodeLocally, setShowCodeLocally] = useState<Map<string, boolean>>(new Map());
 
 	useEffect(() => {
 		ideRequest("WorkspaceService.GetDataStorage", "CodeSample");
@@ -180,12 +181,18 @@ const CodeContextPanel: React.FC = () => {
 				if (data.storages) {
 					let temp = JSON.parse(data.storages) as CodeSample[];
 					setCodeSamples(temp);
+					const localMap = new Map<string, boolean>();
+					temp.forEach(sample => localMap.set(sample.id, true));
+					setShowCodeLocally(localMap);
 				}
 				break;
 			case "FrameworkCodeFragment":
 				if (data.storages) {
 					let temp2 = JSON.parse(data.storages) as CodeContext[];
 					setCodeContexts(temp2);
+					const localMap = new Map<string, boolean>();
+					temp2.forEach(context => localMap.set(context.id, true));
+					setShowCodeLocally(localMap);
 				}
 				break;
 			default:
@@ -198,9 +205,10 @@ const CodeContextPanel: React.FC = () => {
 		if (data.groups) {
 			const parsedGroups = jsonToGroups(data.groups);
 			setGroups(parsedGroups);
-			ideRequest("WorkspaceService.Groups.GetSelectedGroupName","");
+			ideRequest("WorkspaceService.Groups.GetSelectedGroupName", "");
 		}
 	});
+
 	useWebviewListener("WorkspaceService_Groups_GetSelectedGroupName", async (data) => {
 		if (data.groupName) {
 			setSelectedGroup(data.groupName);
@@ -395,6 +403,52 @@ const CodeContextPanel: React.FC = () => {
 		setGroups(updatedGroups);
 	};
 
+	const handleGlobalCodeToggle = (checked: boolean) => {
+		setShowCodeGlobally(checked);
+		const updatedLocalMap = new Map(showCodeLocally);
+		codeSamples.forEach(sample => updatedLocalMap.set(sample.id, checked));
+		codeContexts.forEach(context => updatedLocalMap.set(context.id, checked));
+		setShowCodeLocally(updatedLocalMap);
+	};
+
+	const handleLocalCodeToggle = (id: string, checked: boolean) => {
+		const updatedLocalMap = new Map(showCodeLocally);
+		updatedLocalMap.set(id, checked);
+		setShowCodeLocally(updatedLocalMap);
+	};
+
+	// 新增功能：将选中的item的id添加到当前被选中的group中
+	const addSelectedItemsToGroup = () => {
+		if (!selectedGroup) {
+			alert("请先选择一个编组！");
+			return;
+		}
+
+		const type = activeTab === 'CodeSample' ? 'CodeSample' : 'FrameworkCodeFragment';
+		const selectedItemIds = selectedItems.get(type) || [];
+
+		if (selectedItemIds.length === 0) {
+			alert("没有选中的项！");
+			return;
+		}
+
+		const group = groups.find(g => g.name === selectedGroup);
+		if (group) {
+			const updatedItemMap = new Map(group.itemMap);
+			const existingIds = updatedItemMap.get(type) || [];
+			const newIds = [...new Set([...existingIds, ...selectedItemIds])];
+			updatedItemMap.set(type, newIds);
+
+			const updatedGroup = { ...group, itemMap: updatedItemMap };
+			const updatedGroups = groups.map(g => (g.name === selectedGroup ? updatedGroup : g));
+			setGroups(updatedGroups);
+
+			// 发送选中的item的id组给IDE
+			const ItemIdsJsonString = JSON.stringify(selectedItemIds);
+			ideRequest("WorkspaceService.Groups.AddGroupItems", { groupName: selectedGroup, key: type, itemIdsJsonString:ItemIdsJsonString });
+		}
+	};
+
 	return (
 		<Container>
 			<h1>代码样例管理</h1>
@@ -410,6 +464,17 @@ const CodeContextPanel: React.FC = () => {
 					编组管理
 				</Tab>
 			</Tabs>
+
+			<div style={{ marginBottom: '20px' }}>
+				<label>
+					<input
+						type="checkbox"
+						checked={showCodeGlobally}
+						onChange={(e) => handleGlobalCodeToggle(e.target.checked)}
+					/>
+					显示所有代码内容
+				</label>
+			</div>
 
 			<TabContent active={activeTab === 'CodeSample'}>
 				<FormContainer>
@@ -455,7 +520,15 @@ const CodeContextPanel: React.FC = () => {
 								onChange={() => handleCheckboxChange(sample.id)}
 							/>
 							<h3>文件路径: {sample.filePath}</h3>
-							<CodeContent>{sample.code}</CodeContent>
+							<label style={{ marginLeft: '10px' }}>
+								<input
+									type="checkbox"
+									checked={showCodeLocally.get(sample.id) || false}
+									onChange={(e) => handleLocalCodeToggle(sample.id, e.target.checked)}
+								/>
+								显示代码内容
+							</label>
+							{showCodeLocally.get(sample.id) && <CodeContent>{sample.code}</CodeContent>}
 							<p>样例说明: {sample.doc}</p>
 							<Actions>
 								<Button onClick={() => editItem(index)}>编辑</Button>
@@ -510,7 +583,15 @@ const CodeContextPanel: React.FC = () => {
 								onChange={() => handleCheckboxChange(context.id)}
 							/>
 							<h3>文件路径: {context.filePath}</h3>
-							<CodeContent>{context.code}</CodeContent>
+							<label style={{ marginLeft: '10px' }}>
+								<input
+									type="checkbox"
+									checked={showCodeLocally.get(context.id) || false}
+									onChange={(e) => handleLocalCodeToggle(context.id, e.target.checked)}
+								/>
+								显示代码内容
+							</label>
+							{showCodeLocally.get(context.id) && <CodeContent>{context.code}</CodeContent>}
 							<p>上下文说明: {context.doc}</p>
 							<Actions>
 								<Button onClick={() => editItem(index)}>编辑</Button>
@@ -521,55 +602,60 @@ const CodeContextPanel: React.FC = () => {
 				</div>
 			</TabContent>
 
-	<TabContent active={activeTab === 'Groups'}>
-	<FormContainer>
-		<h2>{formTitle}</h2>
-		<div>
-			{groups.map((group, groupIndex) => (
-				<GroupItem key={groupIndex}>
-					<Radio
-						name="selectedGroup"
-						checked={selectedGroup === group.name}
-						onChange={() => {
-							setSelectedGroup(group.name);
-							ideRequest("WorkspaceService.Groups.SelectGroup", { groupName: group.name });
-						}}
-					/>
-					<h3>编组名称: {group.name}</h3>
+			<TabContent active={activeTab === 'Groups'}>
+				<FormContainer>
+					<h2>{formTitle}</h2>
 					<div>
-	{Array.from(group.itemMap.entries()).map(([type, ids]) => {
-		if (ids.length > 0) {
-			return (
-				<div key={type}>
-					<h4>{type === 'CodeSample' ? '代码样例' : '代码上下文'}</h4>
-					<ul>
-						{ids.map((id, itemIndex) => {
-							const itemInfo = getItemById(id);
-							if (!itemInfo) return null;
-							const { item } = itemInfo;
-							return (
-								<li key={itemIndex}>
-									<h5>文件路径: {item.filePath}</h5>
-									<CodeContent>{item.code}</CodeContent>
-									<p>说明: {item.doc}</p>
-								</li>
-							);
-						})}
-					</ul>
-				</div>
-			);
-		}
-		return null;
-	})}
-</div>
-					<Actions>
-						<Button onClick={() => deleteGroup(groupIndex)}>删除编组</Button>
-					</Actions>
-				</GroupItem>
-			))}
-		</div>
-	</FormContainer>
-</TabContent>
+						{groups.map((group, groupIndex) => (
+							<GroupItem key={groupIndex}>
+								<Radio
+									name="selectedGroup"
+									checked={selectedGroup === group.name}
+									onChange={() => {
+										setSelectedGroup(group.name);
+										ideRequest("WorkspaceService.Groups.SelectGroup", { groupName: group.name });
+									}}
+								/>
+								<h3>编组名称: {group.name}</h3>
+								<div>
+									{Array.from(group.itemMap.entries()).map(([type, ids]) => {
+										if (ids.length > 0) {
+											return (
+												<div key={type}>
+													<h4>{type === 'CodeSample' ? '代码样例' : '代码上下文'}</h4>
+													<ul>
+														{ids.map((id, itemIndex) => {
+															const itemInfo = getItemById(id);
+															if (!itemInfo) return null;
+															const { item } = itemInfo;
+															return (
+																<li key={itemIndex}>
+																	<h5>文件路径: {item.filePath}</h5>
+																	{showCodeLocally.get(id) && <CodeContent>{item.code}</CodeContent>}
+																	<p>说明: {item.doc}</p>
+																</li>
+															);
+														})}
+													</ul>
+												</div>
+											);
+										}
+										return null;
+									})}
+								</div>
+								<Actions>
+									<Button onClick={() => deleteGroup(groupIndex)}>删除编组</Button>
+								</Actions>
+							</GroupItem>
+						))}
+					</div>
+				</FormContainer>
+			</TabContent>
+
+			{/* 新增按钮：将选中的item的id添加到当前被选中的group中 */}
+			<Button onClick={addSelectedItemsToGroup} disabled={!selectedGroup || Array.from(selectedItems.values()).flat().length === 0}>
+				将选中的项添加到当前编组
+			</Button>
 
 			<Button onClick={handleGroupItems} disabled={Array.from(selectedItems.values()).flat().length === 0}>
 				编组选中的项
@@ -607,8 +693,9 @@ function jsonToGroups(jsonString: string): Group[] {
 		const itemMap = new Map<string, string[]>();
 
 		Object.keys(groupData).forEach(key => {
-			if(groupData[key].length>0)
-			{	itemMap.set(key, groupData[key].map(String));}
+			if (groupData[key].length > 0) {
+				itemMap.set(key, groupData[key].map(String));
+			}
 		});
 
 		return {
@@ -619,16 +706,15 @@ function jsonToGroups(jsonString: string): Group[] {
 
 	return groups;
 }
+
 function GroupToJson(group: Group): string {
 	const groupData: { [key: string]: { [key: string]: string[] } } = {};
 	groupData[group.name] = {};
 	group.itemMap.forEach((ids, type) => {
-		if(ids.length>0)
-		{	groupData[group.name][type] = ids;}
+		if (ids.length > 0) {
+			groupData[group.name][type] = ids;
+		}
 	});
 
 	return JSON.stringify(groupData);
 }
-
-
-

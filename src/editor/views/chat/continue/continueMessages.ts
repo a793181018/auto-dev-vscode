@@ -195,6 +195,14 @@ string
 {groupName:string},
 string
 >;
+'WorkspaceService.Groups.AddGroupItems':WebviewMessageBuilder<
+'WorkspaceService.Groups.AddGroupItems',
+{groupName:string,key:string, itemIdsJsonString:string},
+string
+>;
+
+
+
 
 'WorkspaceService.Groups.GetSelectedGroupName':WebviewMessageBuilder<
 'WorkspaceService.Groups.GetSelectedGroupName',
