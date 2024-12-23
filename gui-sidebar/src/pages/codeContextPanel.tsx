@@ -24,15 +24,27 @@ interface Group {
 	itemMap: Map<string, string[]>;
 }
 
+const ButtonsContainer = styled.div`
+	display: flex;
+	justify-content: center; /* 使按钮居中 */
+	gap: 20px; /* 按钮之间的间距 */
+	margin-top: 20px; /* 添加顶部间距 */
+`;
+
+
 const Container = styled.div`
 	font-family: Arial, sans-serif;
-	margin: 20px;
+	margin: 0 auto; /* 使容器水平居中 */
+	padding: 20px; /* 添加内边距 */
 	background-color: #000;
 	color: #fff;
+	max-width: 80%;
+	overflow-x: auto; /* 横向滚动 */
 `;
 
 const Tabs = styled.div`
 	display: flex;
+	justify-content: center; /* 使选项卡内容居中 */
 	margin-bottom: 20px;
 `;
 
@@ -51,6 +63,8 @@ const TabContent = styled.div<{ active: boolean }>`
 	border: 1px solid #555;
 	background-color: #222;
 	color: #fff;
+	max-width: 100%; /* 限制最大宽度 */
+	overflow-x: auto; /* 横向滚动 */
 `;
 
 const FormContainer = styled.div`
@@ -62,13 +76,16 @@ const FormContainer = styled.div`
 `;
 
 const Input = styled.input`
-	width: 100%;
+	flex: 1; /* 输入框占据剩余空间 */
 	padding: 10px;
-	margin-bottom: 10px;
+	margin-right: 10px;
 	box-sizing: border-box;
 	background-color: #444;
 	color: #fff;
 	border: 1px solid #555;
+	overflow-wrap: break-word; /* 内容超出时换行 */
+	word-break: break-all; /* 强制换行 */
+	max-width: 80%; /* 限制最大宽度为界面的25% */
 `;
 
 const TextArea = styled.textarea`
@@ -99,6 +116,8 @@ const CodeContent = styled.div`
 	box-sizing: border-box;
 	background-color: #444;
 	color: #fff;
+	max-width: 100%; /* 限制最大宽度 */
+	overflow-x: auto; /* 横向滚动 */
 `;
 
 const CodeSample = styled.div`
@@ -107,6 +126,8 @@ const CodeSample = styled.div`
 	border: 1px solid #555;
 	background-color: #333;
 	color: #fff;
+	max-width: 100%; /* 限制最大宽度 */
+	overflow-x: auto; /* 横向滚动 */
 `;
 
 const Actions = styled.div`
@@ -144,6 +165,8 @@ const GroupItem = styled.div`
 	border: 1px solid #555;
 	background-color: #333;
 	color: #fff;
+	max-width: 100%; /* 限制最大宽度 */
+	overflow-x: auto; /* 横向滚动 */
 `;
 
 const CodeContextPanel: React.FC = () => {
@@ -168,7 +191,12 @@ const CodeContextPanel: React.FC = () => {
 	const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
 	const [showCodeGlobally, setShowCodeGlobally] = useState(true);
 	const [showCodeLocally, setShowCodeLocally] = useState<Map<string, boolean>>(new Map());
-	const [selectedGroupItems, setSelectedGroupItems] = useState<Map<string, Map<string, boolean>>>(new Map()); // 新增状态，用于存储每个编组中选中的item
+	const [selectedGroupItems, setSelectedGroupItems] = useState<Map<string, Map<string, boolean>>>(new Map());
+
+	// 新增状态：搜索相关
+	const [searchQuery, setSearchQuery] = useState('');
+	const [searchProperty, setSearchProperty] = useState('filePath');
+	const [filteredItems, setFilteredItems] = useState<(CodeSample | CodeContext)[]>([]);
 
 	useEffect(() => {
 		ideRequest("WorkspaceService.GetDataStorage", "CodeSample");
@@ -448,7 +476,6 @@ const CodeContextPanel: React.FC = () => {
 		}
 	};
 
-	// 新增功能：处理编组中item的多选框变化
 	const handleGroupItemCheckboxChange = (groupName: string, type: string, itemId: string) => {
 		const groupItemMap = selectedGroupItems.get(groupName) || new Map<string, boolean>();
 		const updatedGroupItemMap = new Map(groupItemMap);
@@ -456,7 +483,6 @@ const CodeContextPanel: React.FC = () => {
 		setSelectedGroupItems(new Map(selectedGroupItems.set(groupName, updatedGroupItemMap)));
 	};
 
-	// 新增功能：删除选中的item
 	const deleteSelectedGroupItems = () => {
 		if (!selectedGroup) {
 			alert("请先选择一个编组！");
@@ -494,14 +520,48 @@ const CodeContextPanel: React.FC = () => {
 			const needDeletedItemIdsMapJsonString = JSON.stringify(Object.fromEntries(needDeletedItemIdsMap));
 			ideRequest("WorkspaceService.Groups.RemoveGroupItems", { groupName: selectedGroup, needDeletedItemIdsMapJsonString });
 
-			// 清空选中的item
 			setSelectedGroupItems(new Map(selectedGroupItems.set(selectedGroup, new Map())));
+		}
+	};
+
+	// 新增功能：搜索
+	const handleSearch = () => {
+		// 如果搜索栏为空，显示所有 item
+		if (searchQuery.trim() === '') {
+			setFilteredItems([...codeSamples, ...codeContexts]);
+		} else {
+			// 否则，根据搜索内容和属性过滤
+			const allItems = [...codeSamples, ...codeContexts];
+			const filtered = allItems.filter(item => {
+				const value = item[searchProperty as keyof typeof item];
+				return value && value.toString().toLowerCase().includes(searchQuery.toLowerCase());
+			});
+			setFilteredItems(filtered);
 		}
 	};
 
 	return (
 		<Container>
 			<h1>代码样例管理</h1>
+
+			{/* 搜索区域 */}
+			<div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
+				<Input
+					type="text"
+					placeholder="输入搜索内容"
+					value={searchQuery}
+					onChange={(e) => setSearchQuery(e.target.value)}
+				/>
+				<select
+					value={searchProperty}
+					onChange={(e) => setSearchProperty(e.target.value)}
+				>
+					<option value="filePath">文件路径</option>
+					<option value="code">代码内容</option>
+					<option value="doc">说明</option>
+				</select>
+				<Button onClick={handleSearch}>搜索</Button>
+			</div>
 
 			<Tabs>
 				<Tab active={activeTab === 'CodeSample'} onClick={() => handleTabChange('CodeSample')}>
@@ -562,30 +622,34 @@ const CodeContextPanel: React.FC = () => {
 				</FormContainer>
 
 				<div>
-					{codeSamples.map((sample, index) => (
-						<CodeSample key={sample.id}>
-							<input
-								type="checkbox"
-								checked={(selectedItems.get('CodeSample') || []).includes(sample.id)}
-								onChange={() => handleCheckboxChange(sample.id)}
-							/>
-							<h3>文件路径: {sample.filePath}</h3>
-							<label style={{ marginLeft: '10px' }}>
+					{filteredItems.length > 0 ? (
+						filteredItems.map((sample, index) => (
+							<CodeSample key={sample.id}>
 								<input
 									type="checkbox"
-									checked={showCodeLocally.get(sample.id) || false}
-									onChange={(e) => handleLocalCodeToggle(sample.id, e.target.checked)}
+									checked={(selectedItems.get('CodeSample') || []).includes(sample.id)}
+									onChange={() => handleCheckboxChange(sample.id)}
 								/>
-								显示代码内容
-							</label>
-							{showCodeLocally.get(sample.id) && <CodeContent>{sample.code}</CodeContent>}
-							<p>样例说明: {sample.doc}</p>
-							<Actions>
-								<Button onClick={() => editItem(index)}>编辑</Button>
-								<Button onClick={() => deleteItem(index)}>删除</Button>
-							</Actions>
-						</CodeSample>
-					))}
+								<h3>文件路径: {sample.filePath}</h3>
+								<label style={{ marginLeft: '10px' }}>
+									<input
+										type="checkbox"
+										checked={showCodeLocally.get(sample.id) || false}
+										onChange={(e) => handleLocalCodeToggle(sample.id, e.target.checked)}
+									/>
+									显示代码内容
+								</label>
+								{showCodeLocally.get(sample.id) && <CodeContent>{sample.code}</CodeContent>}
+								<p>样例说明: {sample.doc}</p>
+								<Actions>
+									<Button onClick={() => editItem(index)}>编辑</Button>
+									<Button onClick={() => deleteItem(index)}>删除</Button>
+								</Actions>
+							</CodeSample>
+						))
+					) : (
+						<p>没有符合条件的项。</p>
+					)}
 				</div>
 			</TabContent>
 
@@ -625,30 +689,34 @@ const CodeContextPanel: React.FC = () => {
 				</FormContainer>
 
 				<div>
-					{codeContexts.map((context, index) => (
-						<CodeSample key={context.id}>
-							<input
-								type="checkbox"
-								checked={(selectedItems.get('FrameworkCodeFragment') || []).includes(context.id)}
-								onChange={() => handleCheckboxChange(context.id)}
-							/>
-							<h3>文件路径: {context.filePath}</h3>
-							<label style={{ marginLeft: '10px' }}>
+					{filteredItems.length > 0 ? (
+						filteredItems.map((context, index) => (
+							<CodeSample key={context.id}>
 								<input
 									type="checkbox"
-									checked={showCodeLocally.get(context.id) || false}
-									onChange={(e) => handleLocalCodeToggle(context.id, e.target.checked)}
+									checked={(selectedItems.get('FrameworkCodeFragment') || []).includes(context.id)}
+									onChange={() => handleCheckboxChange(context.id)}
 								/>
-								显示代码内容
-							</label>
-							{showCodeLocally.get(context.id) && <CodeContent>{context.code}</CodeContent>}
-							<p>上下文说明: {context.doc}</p>
-							<Actions>
-								<Button onClick={() => editItem(index)}>编辑</Button>
-								<Button onClick={() => deleteItem(index)}>删除</Button>
-							</Actions>
-						</CodeSample>
-					))}
+								<h3>文件路径: {context.filePath}</h3>
+								<label style={{ marginLeft: '10px' }}>
+									<input
+										type="checkbox"
+										checked={showCodeLocally.get(context.id) || false}
+										onChange={(e) => handleLocalCodeToggle(context.id, e.target.checked)}
+									/>
+									显示代码内容
+								</label>
+								{showCodeLocally.get(context.id) && <CodeContent>{context.code}</CodeContent>}
+								<p>上下文说明: {context.doc}</p>
+								<Actions>
+									<Button onClick={() => editItem(index)}>编辑</Button>
+									<Button onClick={() => deleteItem(index)}>删除</Button>
+								</Actions>
+							</CodeSample>
+						))
+					) : (
+						<p>没有符合条件的项。</p>
+					)}
 				</div>
 			</TabContent>
 
@@ -706,7 +774,7 @@ const CodeContextPanel: React.FC = () => {
 					</div>
 				</FormContainer>
 			</TabContent>
-
+			<ButtonsContainer>
 			<Button onClick={addSelectedItemsToGroup} disabled={!selectedGroup || Array.from(selectedItems.values()).flat().length === 0}>
 				将选中的项添加到当前编组
 			</Button>
@@ -718,7 +786,7 @@ const CodeContextPanel: React.FC = () => {
 			<Button onClick={handleGroupItems} disabled={Array.from(selectedItems.values()).flat().length === 0}>
 				编组选中的项
 			</Button>
-
+			</ButtonsContainer>
 			{showGroupNameModal && (
 				<GroupNameModal>
 					<GroupNameContent>
