@@ -201,6 +201,12 @@ string
 string
 >;
 
+'WorkspaceService.Groups.RemoveGroupItems':WebviewMessageBuilder<
+'WorkspaceService.Groups.RemoveGroupItems',
+{groupName:string, needDeletedItemIdsMapJsonString:string},
+string
+>;
+
 
 
 

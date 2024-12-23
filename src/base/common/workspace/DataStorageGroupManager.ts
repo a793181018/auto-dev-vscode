@@ -110,23 +110,48 @@ export class DataStorageGroupManager {
 		if (this._groupMap.has(group)) {
 			const groupMap = this._groupMap.get(group)!;
 			if (groupMap.has(itemType)) {
-				const itemList = groupMap.get(itemType)!;
-				values.forEach(value => {
-					const index = itemList.indexOf(value);
-					if (index !== -1) {
-						itemList.splice(index, 1);
-					}
-				});
+				let itemList = groupMap.get(itemType)!;
+			  itemList =	itemList.filter(item => !values.includes(item));
 				if (itemList.length === 0) {
 					groupMap.delete(itemType);
 				}
 				if (groupMap.size === 0) {
 					this._groupMap.delete(group);
 				}
-				this.saveGroupToDatabase(group, groupMap);
+				if (itemList.length > 0) {
+					groupMap.set(itemType, itemList);
+				}
+				 this.saveGroupToDatabase(group, groupMap);
 			}
 		}
 	}
+	public RemoveGroupItemsByMap(group: string,  values: Map<string, number[]>) {
+		if (this._groupMap.has(group)) {
+			const groupMap = this._groupMap.get(group)!;
+			for (const [itemType, value] of values) {
+				if (groupMap.has(itemType)) {
+					let itemList = groupMap.get(itemType)!;
+				  itemList =	itemList.filter(item => !value.includes(item));
+					if (itemList.length === 0) {
+						groupMap.delete(itemType);
+					}
+					if (groupMap.size === 0) {
+						this._groupMap.delete(group);
+						this.saveGroupToDatabase(group, groupMap);
+						return;
+				}
+				if (itemList.length > 0) {
+					groupMap.set(itemType, itemList);
+				}
+				}
+			}
+			this._groupMap.set(group, groupMap);
+			this.saveGroupToDatabase(group, groupMap);
+		}
+	}
+
+
+
 
 	public RemoveGroup(group: string) {
 		if (this._groupMap.has(group)) {
@@ -150,6 +175,9 @@ export class DataStorageGroupManager {
 public GetSelectedGroupName(): string {
 		return this._selectedGroupName;
 }
+
+
+
 
 	private async saveGroupToDatabase(group: string, groupMap: Map<string, number[]>) {
 		const groupJson = JSON.stringify(Object.fromEntries(groupMap));
@@ -215,4 +243,25 @@ export function JsonToGroup(jsonString: string): Group {
 			name: groupName,
 			items: itemMap
 	};
+}
+export function JsonToMap<K extends string | number, V>(jsonString: string): Map<K, V> {
+	// 将 JSON 字符串解析为 JavaScript 对象
+	const obj = JSON.parse(jsonString);
+
+	// 创建一个新的 Map
+	const map = new Map<K, V>();
+
+	// 遍历对象的属性并将其添加到 Map 中
+	for (const key in obj) {
+			if (obj.hasOwnProperty(key)) {
+					// 将键和值转换为泛型类型
+					const typedKey = key as K;
+					const typedValue = obj[key] as V;
+
+					// 将键值对添加到 Map 中
+					map.set(typedKey, typedValue);
+			}
+	}
+
+	return map;
 }

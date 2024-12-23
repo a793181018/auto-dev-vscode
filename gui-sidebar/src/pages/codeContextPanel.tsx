@@ -168,6 +168,7 @@ const CodeContextPanel: React.FC = () => {
 	const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
 	const [showCodeGlobally, setShowCodeGlobally] = useState(true);
 	const [showCodeLocally, setShowCodeLocally] = useState<Map<string, boolean>>(new Map());
+	const [selectedGroupItems, setSelectedGroupItems] = useState<Map<string, Map<string, boolean>>>(new Map()); // 新增状态，用于存储每个编组中选中的item
 
 	useEffect(() => {
 		ideRequest("WorkspaceService.GetDataStorage", "CodeSample");
@@ -417,7 +418,6 @@ const CodeContextPanel: React.FC = () => {
 		setShowCodeLocally(updatedLocalMap);
 	};
 
-	// 新增功能：将选中的item的id添加到当前被选中的group中
 	const addSelectedItemsToGroup = () => {
 		if (!selectedGroup) {
 			alert("请先选择一个编组！");
@@ -443,9 +443,59 @@ const CodeContextPanel: React.FC = () => {
 			const updatedGroups = groups.map(g => (g.name === selectedGroup ? updatedGroup : g));
 			setGroups(updatedGroups);
 
-			// 发送选中的item的id组给IDE
 			const ItemIdsJsonString = JSON.stringify(selectedItemIds);
 			ideRequest("WorkspaceService.Groups.AddGroupItems", { groupName: selectedGroup, key: type, itemIdsJsonString:ItemIdsJsonString });
+		}
+	};
+
+	// 新增功能：处理编组中item的多选框变化
+	const handleGroupItemCheckboxChange = (groupName: string, type: string, itemId: string) => {
+		const groupItemMap = selectedGroupItems.get(groupName) || new Map<string, boolean>();
+		const updatedGroupItemMap = new Map(groupItemMap);
+		updatedGroupItemMap.set(itemId, !groupItemMap.get(itemId));
+		setSelectedGroupItems(new Map(selectedGroupItems.set(groupName, updatedGroupItemMap)));
+	};
+
+	// 新增功能：删除选中的item
+	const deleteSelectedGroupItems = () => {
+		if (!selectedGroup) {
+			alert("请先选择一个编组！");
+			return;
+		}
+
+		const group = groups.find(g => g.name === selectedGroup);
+		if (group) {
+			const groupItemMap = selectedGroupItems.get(selectedGroup) || new Map<string, boolean>();
+			const needDeletedItemIdsMap = new Map<string, string[]>();
+
+			group.itemMap.forEach((ids, type) => {
+				const selectedIds = ids.filter(id => groupItemMap.get(id));
+				if (selectedIds.length > 0) {
+					needDeletedItemIdsMap.set(type, selectedIds);
+				}
+			});
+
+			if (needDeletedItemIdsMap.size === 0) {
+				alert("没有选中的项！");
+				return;
+			}
+
+			const updatedItemMap = new Map(group.itemMap);
+			needDeletedItemIdsMap.forEach((ids, type) => {
+				const existingIds = updatedItemMap.get(type) || [];
+				const newIds = existingIds.filter(id => !ids.includes(id));
+				updatedItemMap.set(type, newIds);
+			});
+
+			const updatedGroup = { ...group, itemMap: updatedItemMap };
+			const updatedGroups = groups.map(g => (g.name === selectedGroup ? updatedGroup : g));
+			setGroups(updatedGroups);
+
+			const needDeletedItemIdsMapJsonString = JSON.stringify(Object.fromEntries(needDeletedItemIdsMap));
+			ideRequest("WorkspaceService.Groups.RemoveGroupItems", { groupName: selectedGroup, needDeletedItemIdsMapJsonString });
+
+			// 清空选中的item
+			setSelectedGroupItems(new Map(selectedGroupItems.set(selectedGroup, new Map())));
 		}
 	};
 
@@ -630,6 +680,11 @@ const CodeContextPanel: React.FC = () => {
 															const { item } = itemInfo;
 															return (
 																<li key={itemIndex}>
+																	<input
+																		type="checkbox"
+																		checked={(selectedGroupItems.get(group.name)?.get(id) || false)}
+																		onChange={() => handleGroupItemCheckboxChange(group.name, type, id)}
+																	/>
 																	<h5>文件路径: {item.filePath}</h5>
 																	{showCodeLocally.get(id) && <CodeContent>{item.code}</CodeContent>}
 																	<p>说明: {item.doc}</p>
@@ -652,9 +707,12 @@ const CodeContextPanel: React.FC = () => {
 				</FormContainer>
 			</TabContent>
 
-			{/* 新增按钮：将选中的item的id添加到当前被选中的group中 */}
 			<Button onClick={addSelectedItemsToGroup} disabled={!selectedGroup || Array.from(selectedItems.values()).flat().length === 0}>
 				将选中的项添加到当前编组
+			</Button>
+
+			<Button onClick={deleteSelectedGroupItems} disabled={!selectedGroup || Array.from(selectedGroupItems.get(selectedGroup)?.values() || []).filter(Boolean).length === 0}>
+				删除选中的项
 			</Button>
 
 			<Button onClick={handleGroupItems} disabled={Array.from(selectedItems.values()).flat().length === 0}>

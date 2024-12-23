@@ -8,8 +8,10 @@ import path from 'node:path';
 import { plainToClass, plainToInstance } from 'class-transformer';
 import { load } from 'js-yaml';
 import _ from 'lodash';
+import { data } from 'node_modules/cheerio/dist/commonjs/api/attributes';
 import { CodeSample } from 'src/action/addCodeSamples/AddCodeSampleExecutor';
 import { AutoDevExtension } from 'src/AutoDevExtension';
+import { FrameworkCodeFragment } from 'src/code-context/_base/LanguageModel/ClassElement/FrameworkCodeFragmentExtractorBase';
 import { json } from 'stream/consumers';
 import {
 	CancellationTokenSource,
@@ -30,6 +32,7 @@ import { logger } from 'base/common/log/log';
 import { showErrorMessage } from 'base/common/messages/messages';
 import { getNonce } from 'base/common/webview/webview';
 import { AbstractWebviewViewProvider } from 'base/common/webview/webviewView';
+import { Group, JsonToGroup, MapToObject } from 'base/common/workspace/DataStorageGroupManager';
 import { WorkspaceService } from 'base/common/workspace/WorkspaceService';
 
 import { openSettings } from '../../../../commands/commands';
@@ -44,9 +47,6 @@ import {
 	SessionInfo,
 	type ShowErrorMessage,
 } from './continueMessages';
-import { data } from 'node_modules/cheerio/dist/commonjs/api/attributes';
-import { FrameworkCodeFragment } from 'src/code-context/_base/LanguageModel/ClassElement/FrameworkCodeFragmentExtractorBase';
-import { Group, JsonToGroup, MapToObject } from 'base/common/workspace/DataStorageGroupManager';
 
 export class ContinueViewProvider extends AbstractWebviewViewProvider implements WebviewViewProvider {
 	private historySaveDir = path.join(os.homedir(), '.autodev/sessions');
@@ -225,15 +225,15 @@ export class ContinueViewProvider extends AbstractWebviewViewProvider implements
 					if (language) {
 						switch (payload.data.key) {
 							case 'CodeSample':
-								let dataRemoved= CodeSample.DeserializationFormJson(JSON.parse(payload.data.originalItem));
+								let dataRemoved = CodeSample.DeserializationFormJson(JSON.parse(payload.data.originalItem));
 								this.workSpace.AddDataStorage(language, dataRemoved);
 								break;
 							case 'FrameworkCodeFragment':
-								let dataRemoved1= FrameworkCodeFragment.DeserializationFormJson(JSON.parse(payload.data.originalItem));
+								let dataRemoved1 = FrameworkCodeFragment.DeserializationFormJson(JSON.parse(payload.data.originalItem));
 								this.workSpace.AddDataStorage(language, dataRemoved1);
 								break;
+						}
 					}
-				}
 					break;
 				case 'WorkspaceService.GetDataStorage':
 					if (language) {
@@ -247,11 +247,11 @@ export class ContinueViewProvider extends AbstractWebviewViewProvider implements
 					if (language) {
 						switch (payload.data.key) {
 							case 'CodeSample':
-								let dataRemoved= CodeSample.DeserializationFormJson(JSON.parse(payload.data.originalItem));
+								let dataRemoved = CodeSample.DeserializationFormJson(JSON.parse(payload.data.originalItem));
 								this.workSpace.RemoveDataStorage(language, dataRemoved);
 								break;
 							case 'FrameworkCodeFragment':
-								let dataRemoved1= FrameworkCodeFragment.DeserializationFormJson(JSON.parse(payload.data.originalItem));
+								let dataRemoved1 = FrameworkCodeFragment.DeserializationFormJson(JSON.parse(payload.data.originalItem));
 								this.workSpace.RemoveDataStorage(language, dataRemoved1);
 								break;
 						}
@@ -261,62 +261,69 @@ export class ContinueViewProvider extends AbstractWebviewViewProvider implements
 					if (language) {
 						switch (payload.data.key) {
 							case 'FrameworkCodeFragment':
-								let ollDataFormat =FrameworkCodeFragment.DeserializationFormJson(JSON.parse(payload.data.originalItem));
+								let ollDataFormat = FrameworkCodeFragment.DeserializationFormJson(
+									JSON.parse(payload.data.originalItem),
+								);
 								let newDataFormat = FrameworkCodeFragment.DeserializationFormJson(JSON.parse(payload.data.newItem));
 								this.workSpace.ChangeDataStorage(language, payload.data.key, ollDataFormat, newDataFormat);
 								break;
 							case 'CodeSample':
-								let ollDataFormat1 =CodeSample.DeserializationFormJson(JSON.parse(payload.data.originalItem));
-								let newDataFormat1 = 	CodeSample.DeserializationFormJson(JSON.parse(payload.data.newItem));
+								let ollDataFormat1 = CodeSample.DeserializationFormJson(JSON.parse(payload.data.originalItem));
+								let newDataFormat1 = CodeSample.DeserializationFormJson(JSON.parse(payload.data.newItem));
 								this.workSpace.ChangeDataStorage(language, payload.data.key, ollDataFormat1, newDataFormat1);
 
 								break;
 						}
 					}
 					break;
-        case 'WorkspaceService.Groups.AddGroup':
-          if (language) {
-						const group: Group =JsonToGroup(payload.data.data);
+				case 'WorkspaceService.Groups.AddGroup':
+					if (language) {
+						const group: Group = JsonToGroup(payload.data.data);
 						for (let [key, value] of group.items) {
-							if(value.length>0)
-							{
-								await this.workSpace.DataStorageGroupManager?.AddGroupItems(group.name,key,value);
+							if (value.length > 0) {
+								await this.workSpace.DataStorageGroupManager?.AddGroupItems(group.name, key, value);
 							}
 						}
-          }
+					}
 					break;
-					case 'WorkspaceService.Groups.RemoveGroup':
-						if (language) {
-							let group :Group=JSON.parse(payload.data.group);
-							this.workSpace.DataStorageGroupManager?.RemoveGroup(group.name);
+				case 'WorkspaceService.Groups.RemoveGroup':
+					if (language) {
+						let group: Group = JSON.parse(payload.data.group);
+						this.workSpace.DataStorageGroupManager?.RemoveGroup(group.name);
+					}
+					break;
+				case 'WorkspaceService.Groups.GetGroups':
+					if (language) {
+						let data = this.workSpace.DataStorageGroupManager?.GetGroups();
+						if (data) {
+							let dataJson = JSON.stringify(MapToObject(data));
+							this.send('WorkspaceService_Groups_GetGroups', { groups: dataJson });
 						}
-						break;
-					case 'WorkspaceService.Groups.GetGroups':
-						if (language) {
-						 let data=	this.workSpace.DataStorageGroupManager?.GetGroups();
-							if (data) {
-							 let dataJson= JSON.stringify(MapToObject(data));
-							 this.send('WorkspaceService_Groups_GetGroups', {groups:dataJson});
-							}
-						}
-						break;
-						case 'WorkspaceService.Groups.SelectGroup':
-							if (language) {
-								this.workSpace.DataStorageGroupManager?.SetSelectedGroup(payload.data.groupName);
-							}
-							break;
-						case 'WorkspaceService.Groups.AddGroupItems':
-							if (language) {
-								let itemIds:number[] = JSON.parse(payload.data.itemIdsJsonString);
-								this.workSpace.DataStorageGroupManager?.AddGroupItems(payload.data.groupName, payload.data.key, itemIds);
-							}
-							break;
-					case 'WorkspaceService.Groups.GetSelectedGroupName':
-						if (language) {
-							let data=	this.workSpace.DataStorageGroupManager?.GetSelectedGroupName();
-							this.send('WorkspaceService_Groups_GetSelectedGroupName', {groupName:data});
-						}
-						break;
+					}
+					break;
+				case 'WorkspaceService.Groups.SelectGroup':
+					if (language) {
+						this.workSpace.DataStorageGroupManager?.SetSelectedGroup(payload.data.groupName);
+					}
+					break;
+				case 'WorkspaceService.Groups.AddGroupItems':
+					if (language) {
+						let itemIds: number[] = JSON.parse(payload.data.itemIdsJsonString);
+						this.workSpace.DataStorageGroupManager?.AddGroupItems(payload.data.groupName, payload.data.key, itemIds);
+					}
+					break;
+				case 'WorkspaceService.Groups.RemoveGroupItems':
+					if (language) {
+						let itemIdMap: Map<string, number[]> = parseJsonToMap(payload.data.needDeletedItemIdsMapJsonString);
+						this.workSpace.DataStorageGroupManager?.RemoveGroupItemsByMap(payload.data.groupName, itemIdMap);
+					}
+					break;
+				case 'WorkspaceService.Groups.GetSelectedGroupName':
+					if (language) {
+						let data = this.workSpace.DataStorageGroupManager?.GetSelectedGroupName();
+						this.send('WorkspaceService_Groups_GetSelectedGroupName', { groupName: data });
+					}
+					break;
 				default:
 					logger.debug('(continue): Unknown webview protocol msg: ', payload);
 			}
@@ -579,4 +586,21 @@ async function saveAndUpdateChat(base: string, data: ContinueEvent<'history/save
 		logger.error('(webview): history save error', error);
 		showErrorMessage('Chat History Save Error');
 	}
+}
+function parseJsonToMap(jsonString: string): Map<string, number[]> {
+	// 将 JSON 字符串解析为 JavaScript 对象
+	const obj = JSON.parse(jsonString);
+
+	// 创建一个新的 Map，并将字符串数组转换为数字数组
+	const map = new Map<string, number[]>();
+
+	for (const [key, value] of Object.entries(obj)) {
+			// 确保 value 是一个数组，并且每个元素都是数字
+			if (Array.isArray(value)) {
+					const numberArray = value.map(Number);
+					map.set(key, numberArray);
+			}
+	}
+
+	return map;
 }
