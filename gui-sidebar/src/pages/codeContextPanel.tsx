@@ -31,7 +31,6 @@ const ButtonsContainer = styled.div`
 	margin-top: 20px; /* 添加顶部间距 */
 `;
 
-
 const Container = styled.div`
 	font-family: Arial, sans-serif;
 	margin: 0 auto; /* 使容器水平居中 */
@@ -85,7 +84,7 @@ const Input = styled.input`
 	border: 1px solid #555;
 	overflow-wrap: break-word; /* 内容超出时换行 */
 	word-break: break-all; /* 强制换行 */
-	max-width: 80%; /* 限制最大宽度为界面的25% */
+	max-width: 90%; /* 限制最大宽度为界面的25% */
 `;
 
 const TextArea = styled.textarea`
@@ -213,6 +212,10 @@ const CodeContextPanel: React.FC = () => {
 					const localMap = new Map<string, boolean>();
 					temp.forEach(sample => localMap.set(sample.id, true));
 					setShowCodeLocally(localMap);
+					if (activeTab === 'CodeSample') {
+						setFilteredItems(temp);
+					}
+
 				}
 				break;
 			case "FrameworkCodeFragment":
@@ -222,6 +225,9 @@ const CodeContextPanel: React.FC = () => {
 					const localMap = new Map<string, boolean>();
 					temp2.forEach(context => localMap.set(context.id, true));
 					setShowCodeLocally(localMap);
+					if (activeTab === 'FrameworkCodeFragment') {
+						setFilteredItems(temp2);
+					}
 				}
 				break;
 			default:
@@ -260,6 +266,12 @@ const CodeContextPanel: React.FC = () => {
 		setActiveTab(tabName);
 		setFormTitle(tabName === 'CodeSample' ? '添加代码样例' : tabName === 'FrameworkCodeFragment' ? '添加代码上下文' : '管理编组');
 		clearForm();
+
+		if (tabName === 'CodeSample') {
+			setFilteredItems(codeSamples);
+		} else if (tabName === 'FrameworkCodeFragment') {
+			setFilteredItems(codeContexts);
+		}
 
 		if (tabName === 'Groups' && !isDataLoaded) {
 			refreshItems();
@@ -339,22 +351,35 @@ const CodeContextPanel: React.FC = () => {
 
 	const deleteItem = (index: number) => {
 		if (activeTab === 'CodeSample') {
+			// 删除本地数据
+			const updatedCodeSamples = codeSamples.filter((_, i) => i !== index);
+			setCodeSamples(updatedCodeSamples);
+
+			// 更新 filteredItems
+			setFilteredItems(updatedCodeSamples);
+
+			// 向后端发送删除请求
 			let dataformat = {
 				key: activeTab,
 				originalItem: JSON.stringify(codeSamples[index]),
-			}
+			};
 			ideRequest("WorkspaceService.RemoveDataStorage", dataformat);
-			setCodeSamples(codeSamples.filter((_, i) => i !== index));
 		} else {
+			// 删除本地数据
+			const updatedCodeContexts = codeContexts.filter((_, i) => i !== index);
+			setCodeContexts(updatedCodeContexts);
+
+			// 更新 filteredItems
+			setFilteredItems(updatedCodeContexts);
+
+			// 向后端发送删除请求
 			let dataformat = {
 				key: activeTab,
 				originalItem: JSON.stringify(codeContexts[index]),
-			}
+			};
 			ideRequest("WorkspaceService.RemoveDataStorage", dataformat);
-			setCodeContexts(codeContexts.filter((_, i) => i !== index));
 		}
 	};
-
 	const clearForm = () => {
 		setFormData({
 			id: '',
@@ -472,7 +497,7 @@ const CodeContextPanel: React.FC = () => {
 			setGroups(updatedGroups);
 
 			const ItemIdsJsonString = JSON.stringify(selectedItemIds);
-			ideRequest("WorkspaceService.Groups.AddGroupItems", { groupName: selectedGroup, key: type, itemIdsJsonString:ItemIdsJsonString });
+			ideRequest("WorkspaceService.Groups.AddGroupItems", { groupName: selectedGroup, key: type, itemIdsJsonString: ItemIdsJsonString });
 		}
 	};
 
@@ -528,10 +553,10 @@ const CodeContextPanel: React.FC = () => {
 	const handleSearch = () => {
 		// 如果搜索栏为空，显示所有 item
 		if (searchQuery.trim() === '') {
-			setFilteredItems([...codeSamples, ...codeContexts]);
+			setFilteredItems(activeTab === 'CodeSample' ? codeSamples : codeContexts);
 		} else {
 			// 否则，根据搜索内容和属性过滤
-			const allItems = [...codeSamples, ...codeContexts];
+			const allItems = activeTab === 'CodeSample' ? codeSamples : codeContexts;
 			const filtered = allItems.filter(item => {
 				const value = item[searchProperty as keyof typeof item];
 				return value && value.toString().toLowerCase().includes(searchQuery.toLowerCase());
@@ -775,17 +800,17 @@ const CodeContextPanel: React.FC = () => {
 				</FormContainer>
 			</TabContent>
 			<ButtonsContainer>
-			<Button onClick={addSelectedItemsToGroup} disabled={!selectedGroup || Array.from(selectedItems.values()).flat().length === 0}>
-				将选中的项添加到当前编组
-			</Button>
+				<Button onClick={addSelectedItemsToGroup} disabled={!selectedGroup || Array.from(selectedItems.values()).flat().length === 0}>
+					将选中的项添加到当前编组
+				</Button>
 
-			<Button onClick={deleteSelectedGroupItems} disabled={!selectedGroup || Array.from(selectedGroupItems.get(selectedGroup)?.values() || []).filter(Boolean).length === 0}>
-				删除选中的项
-			</Button>
+				<Button onClick={deleteSelectedGroupItems} disabled={!selectedGroup || Array.from(selectedGroupItems.get(selectedGroup)?.values() || []).filter(Boolean).length === 0}>
+					删除选中的项
+				</Button>
 
-			<Button onClick={handleGroupItems} disabled={Array.from(selectedItems.values()).flat().length === 0}>
-				编组选中的项
-			</Button>
+				<Button onClick={handleGroupItems} disabled={Array.from(selectedItems.values()).flat().length === 0}>
+					编组选中的项
+				</Button>
 			</ButtonsContainer>
 			{showGroupNameModal && (
 				<GroupNameModal>
