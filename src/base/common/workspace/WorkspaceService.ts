@@ -238,7 +238,7 @@ return;
             let document = editor.document;
             vscode.commands.executeCommand('vscode.executeCodeLensProvider', document.uri);
         }
-        this._autodev?.chat.send('WorkspaceService_AddDataStorage', 'test');
+        this._autodev?.chat.send('WorkspaceService_AddDataStorage', key);
     }
 
     private saveDataToCache(language: string, key: string, id: number, dataStorage: IDataStorage) {
@@ -267,6 +267,7 @@ return;
                         dataStorages?.delete(storageId);
                         languageDataStorageMap.set(key, dataStorages);
                         this._saveDataMap.get(language)?.get(key)?.delete(storageId); // 从 _saveDataMap 中删除
+												this._autodev?.chat.send('WorkspaceService_RemoveDataStorage', key);
                     }
                 }
             }
@@ -276,6 +277,7 @@ return;
             let document = editor.document;
             vscode.commands.executeCommand('vscode.executeCodeLensProvider', document.uri);
         }
+
     }
 
     public async ChangeDataStorage(language: string, key: string, ollDataStorage: IDataStorage, newDataStorage: IDataStorage) {

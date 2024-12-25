@@ -249,10 +249,12 @@ export class ContinueViewProvider extends AbstractWebviewViewProvider implements
 							case 'CodeSample':
 								let dataRemoved = CodeSample.DeserializationFormJson(JSON.parse(payload.data.originalItem));
 								this.workSpace.RemoveDataStorage(language, dataRemoved);
+								this.send('WorkspaceService_RemoveDataStorage', payload.data.key);
 								break;
 							case 'FrameworkCodeFragment':
 								let dataRemoved1 = FrameworkCodeFragment.DeserializationFormJson(JSON.parse(payload.data.originalItem));
 								this.workSpace.RemoveDataStorage(language, dataRemoved1);
+							this.send('WorkspaceService_RemoveDataStorage', payload.data.key);
 								break;
 						}
 					}

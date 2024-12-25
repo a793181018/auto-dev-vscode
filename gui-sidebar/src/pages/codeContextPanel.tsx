@@ -243,7 +243,11 @@ const CodeContextPanel: React.FC = () => {
 			ideRequest("WorkspaceService.Groups.GetSelectedGroupName", "");
 		}
 	});
+useWebviewListener("WorkspaceService_RemoveDataStorage",  async (data) => {
+	ideRequest("WorkspaceService.GetDataStorage",data);
+}
 
+)
 	useWebviewListener("WorkspaceService_Groups_GetSelectedGroupName", async (data) => {
 		if (data.groupName) {
 			setSelectedGroup(data.groupName);
@@ -351,26 +355,26 @@ const CodeContextPanel: React.FC = () => {
 
 	const deleteItem = (index: number) => {
 		if (activeTab === 'CodeSample') {
-			// 删除本地数据
-			const updatedCodeSamples = codeSamples.filter((_, i) => i !== index);
-			setCodeSamples(updatedCodeSamples);
+			// // 删除本地数据
+			// const updatedCodeSamples = codeSamples.filter((_, i) => i !== index);
+			// setCodeSamples(updatedCodeSamples);
 
-			// 更新 filteredItems
-			setFilteredItems(updatedCodeSamples);
+			// // 更新 filteredItems
+			// setFilteredItems(updatedCodeSamples);
 
-			// 向后端发送删除请求
+			// // 向后端发送删除请求
 			let dataformat = {
 				key: activeTab,
 				originalItem: JSON.stringify(codeSamples[index]),
 			};
 			ideRequest("WorkspaceService.RemoveDataStorage", dataformat);
 		} else {
-			// 删除本地数据
-			const updatedCodeContexts = codeContexts.filter((_, i) => i !== index);
-			setCodeContexts(updatedCodeContexts);
+			// // 删除本地数据
+			// const updatedCodeContexts = codeContexts.filter((_, i) => i !== index);
+			// setCodeContexts(updatedCodeContexts);
 
-			// 更新 filteredItems
-			setFilteredItems(updatedCodeContexts);
+			// // 更新 filteredItems
+			// setFilteredItems(updatedCodeContexts);
 
 			// 向后端发送删除请求
 			let dataformat = {

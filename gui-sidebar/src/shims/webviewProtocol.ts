@@ -123,7 +123,7 @@ export type ReverseWebviewProtocol = {
 	setTheme: [{ theme: any }, void];
 	setColors: [{ [key: string]: string }, void];
 	WorkspaceService_AddDataStorage: [ string, void];
-	WorkspaceService_RemoveDataStorage: [ string, string];
+	WorkspaceService_RemoveDataStorage: [ string, void];
 	WorkspaceService_ChangeDataStorage: [{key:string;originalItem:string;newItem:string},string];
 	WorkspaceService_GetDataStorage: [{key:string;language:string;storages:string},void];
 	WorkspaceService_Groups_GetGroups: [{groups:string},void];
