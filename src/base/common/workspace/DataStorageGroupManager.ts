@@ -10,9 +10,10 @@ export class DataStorageGroupManager {
 	constructor(sqlManager: WorkspaceSqlManager) {
 		this._groupMap = new Map<string, Map<string, number[]>>();
 		this._sqlManager = sqlManager;
+		this._selectedGroupName = '';
 		this.initializeDatabase();
 		this.loadGroupsFromDatabase();
-		this._selectedGroupName = '';
+
 	}
 
 	private initializeDatabase() {
@@ -28,6 +29,9 @@ export class DataStorageGroupManager {
 
 	private async loadGroupsFromDatabase() {
 		const rows = await this.queryDatabase(`SELECT * FROM Groups`);
+		if (rows.length === 0) {
+		  this._selectedGroupName='';
+		}
 		this._selectedGroupName=rows[0].name;
 		rows.forEach(row => {
 			const groupName = row.name;
@@ -38,6 +42,7 @@ export class DataStorageGroupManager {
 			}
 			this._groupMap.set(groupName, groupMap);
 		});
+
 	}
 
 	private async queryDatabase(query: string, params: any[] = []): Promise<any[]> {
@@ -87,69 +92,137 @@ export class DataStorageGroupManager {
 	}
 
 	public RemoveGroupItem(group: string, itemType: string, value: number) {
-		if (this._groupMap.has(group)) {
-			const groupMap = this._groupMap.get(group)!;
-			if (groupMap.has(itemType)) {
-				const itemList = groupMap.get(itemType)!;
-				const index = itemList.indexOf(value);
-				if (index !== -1) {
-					itemList.splice(index, 1);
-				}
-				if (itemList.length === 0) {
-					groupMap.delete(itemType);
-				}
-				if (groupMap.size === 0) {
-					this._groupMap.delete(group);
-				}
-				this.saveGroupToDatabase(group, groupMap);
-			}
-		}
-	}
+    if (group === 'all') {
+        // 遍历所有 group，移除指定的 item
+        this._groupMap.forEach((groupMap, groupName) => {
+            if (groupMap.has(itemType)) {
+                const itemList = groupMap.get(itemType)!;
+                const index = itemList.indexOf(value);
+                if (index !== -1) {
+                    itemList.splice(index, 1);
+                }
+                if (itemList.length === 0) {
+                    groupMap.delete(itemType);
+                }
+                if (groupMap.size === 0) {
+                    this._groupMap.delete(groupName);
+                }
+                this.saveGroupToDatabase(groupName, groupMap);
+            }
+        });
+    } else {
+        // 原有逻辑
+        if (this._groupMap.has(group)) {
+            const groupMap = this._groupMap.get(group)!;
+            if (groupMap.has(itemType)) {
+                const itemList = groupMap.get(itemType)!;
+                const index = itemList.indexOf(value);
+                if (index !== -1) {
+                    itemList.splice(index, 1);
+                }
+                if (itemList.length === 0) {
+                    groupMap.delete(itemType);
+                }
+                if (groupMap.size === 0) {
+                    this._groupMap.delete(group);
+                }
+                this.saveGroupToDatabase(group, groupMap);
+            }
+        }
+    }
+}
 
-	public RemoveGroupItems(group: string, itemType: string, values: number[]) {
-		if (this._groupMap.has(group)) {
-			const groupMap = this._groupMap.get(group)!;
-			if (groupMap.has(itemType)) {
-				let itemList = groupMap.get(itemType)!;
-			  itemList =	itemList.filter(item => !values.includes(item));
-				if (itemList.length === 0) {
-					groupMap.delete(itemType);
-				}
-				if (groupMap.size === 0) {
-					this._groupMap.delete(group);
-				}
-				if (itemList.length > 0) {
-					groupMap.set(itemType, itemList);
-				}
-				 this.saveGroupToDatabase(group, groupMap);
-			}
-		}
-	}
-	public RemoveGroupItemsByMap(group: string,  values: Map<string, number[]>) {
-		if (this._groupMap.has(group)) {
-			const groupMap = this._groupMap.get(group)!;
-			for (const [itemType, value] of values) {
-				if (groupMap.has(itemType)) {
-					let itemList = groupMap.get(itemType)!;
-				  itemList =	itemList.filter(item => !value.includes(item));
-					if (itemList.length === 0) {
-						groupMap.delete(itemType);
-					}
-					if (groupMap.size === 0) {
-						this._groupMap.delete(group);
-						this.saveGroupToDatabase(group, groupMap);
-						return;
-				}
-				if (itemList.length > 0) {
-					groupMap.set(itemType, itemList);
-				}
-				}
-			}
-			this._groupMap.set(group, groupMap);
-			this.saveGroupToDatabase(group, groupMap);
-		}
-	}
+public RemoveGroupItems(group: string, itemType: string, values: number[]) {
+    if (group === 'all') {
+        // 遍历所有 group，移除指定的 items
+        this._groupMap.forEach((groupMap, groupName) => {
+            if (groupMap.has(itemType)) {
+                let itemList = groupMap.get(itemType)!;
+                itemList = itemList.filter(item => !values.includes(item));
+                if (itemList.length === 0) {
+                    groupMap.delete(itemType);
+                }
+                if (groupMap.size === 0) {
+                    this._groupMap.delete(groupName);
+                }
+                if (itemList.length > 0) {
+                    groupMap.set(itemType, itemList);
+                }
+                this.saveGroupToDatabase(groupName, groupMap);
+            }
+        });
+    } else {
+        // 原有逻辑
+        if (this._groupMap.has(group)) {
+            const groupMap = this._groupMap.get(group)!;
+            if (groupMap.has(itemType)) {
+                let itemList = groupMap.get(itemType)!;
+                itemList = itemList.filter(item => !values.includes(item));
+                if (itemList.length === 0) {
+                    groupMap.delete(itemType);
+                }
+                if (groupMap.size === 0) {
+                    this._groupMap.delete(group);
+                }
+                if (itemList.length > 0) {
+                    groupMap.set(itemType, itemList);
+                }
+                this.saveGroupToDatabase(group, groupMap);
+            }
+        }
+    }
+}
 
+public RemoveGroupItemsByMap(group: string, values: Map<string, number[]>) {
+    if (group === 'all') {
+        // 遍历所有 group，移除指定的 items
+        this._groupMap.forEach((groupMap, groupName) => {
+            for (const [itemType, value] of values) {
+                if (groupMap.has(itemType)) {
+                    let itemList = groupMap.get(itemType)!;
+                    itemList = itemList.filter(item => !value.includes(item));
+                    if (itemList.length === 0) {
+                        groupMap.delete(itemType);
+                    }
+                    if (groupMap.size === 0) {
+                        this._groupMap.delete(groupName);
+                        this.saveGroupToDatabase(groupName, groupMap);
+                        return;
+                    }
+                    if (itemList.length > 0) {
+                        groupMap.set(itemType, itemList);
+                    }
+                }
+            }
+            this._groupMap.set(groupName, groupMap);
+            this.saveGroupToDatabase(groupName, groupMap);
+        });
+    } else {
+        // 原有逻辑
+        if (this._groupMap.has(group)) {
+            const groupMap = this._groupMap.get(group)!;
+            for (const [itemType, value] of values) {
+                if (groupMap.has(itemType)) {
+                    let itemList = groupMap.get(itemType)!;
+                    itemList = itemList.filter(item => !value.includes(item));
+                    if (itemList.length === 0) {
+                        groupMap.delete(itemType);
+                    }
+                    if (groupMap.size === 0) {
+                        this._groupMap.delete(group);
+                        this.saveGroupToDatabase(group, groupMap);
+                        return;
+                    }
+                    if (itemList.length > 0) {
+                        groupMap.set(itemType, itemList);
+                    }
+                }
+            }
+            this._groupMap.set(group, groupMap);
+            this.saveGroupToDatabase(group, groupMap);
+        }
+    }
+}
 
 
 

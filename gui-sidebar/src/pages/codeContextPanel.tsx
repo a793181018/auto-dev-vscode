@@ -355,33 +355,73 @@ useWebviewListener("WorkspaceService_RemoveDataStorage",  async (data) => {
 
 	const deleteItem = (index: number) => {
 		if (activeTab === 'CodeSample') {
-			// // 删除本地数据
-			// const updatedCodeSamples = codeSamples.filter((_, i) => i !== index);
-			// setCodeSamples(updatedCodeSamples);
+			// 获取要删除的 item
+			const deletedItem = codeSamples[index];
 
-			// // 更新 filteredItems
-			// setFilteredItems(updatedCodeSamples);
+			// 删除本地数据
+			const updatedCodeSamples = codeSamples.filter((_, i) => i !== index);
+			setCodeSamples(updatedCodeSamples);
 
-			// // 向后端发送删除请求
-			let dataformat = {
-				key: activeTab,
-				originalItem: JSON.stringify(codeSamples[index]),
-			};
-			ideRequest("WorkspaceService.RemoveDataStorage", dataformat);
-		} else {
-			// // 删除本地数据
-			// const updatedCodeContexts = codeContexts.filter((_, i) => i !== index);
-			// setCodeContexts(updatedCodeContexts);
-
-			// // 更新 filteredItems
-			// setFilteredItems(updatedCodeContexts);
+			// 更新 filteredItems
+			setFilteredItems(updatedCodeSamples);
 
 			// 向后端发送删除请求
 			let dataformat = {
 				key: activeTab,
-				originalItem: JSON.stringify(codeContexts[index]),
+				originalItem: JSON.stringify(deletedItem),
 			};
 			ideRequest("WorkspaceService.RemoveDataStorage", dataformat);
+
+			// ------ 从所有 group 中切断与被删除 item 的联系 ------
+			const updatedGroups = groups.map(group => {
+				const itemMap = new Map(group.itemMap);
+				const ids = itemMap.get('CodeSample') || [];
+				const updatedIds = ids.filter(id => id !== deletedItem.id);
+				itemMap.set('CodeSample', updatedIds);
+				return { ...group, itemMap };
+			});
+			setGroups(updatedGroups);
+
+			// 向后端发送 RemoveGroupItems 请求
+			const needDeletedItemIdsMap = new Map<string, string[]>();
+			needDeletedItemIdsMap.set('CodeSample', [deletedItem.id]);
+			const needDeletedItemIdsMapJsonString = JSON.stringify(Object.fromEntries(needDeletedItemIdsMap));
+			ideRequest("WorkspaceService.Groups.RemoveGroupItems", { groupName: "all", needDeletedItemIdsMapJsonString });
+			// ------ 修改结束 ------
+		} else {
+			// 获取要删除的 item
+			const deletedItem = codeContexts[index];
+
+			// 删除本地数据
+			const updatedCodeContexts = codeContexts.filter((_, i) => i !== index);
+			setCodeContexts(updatedCodeContexts);
+
+			// 更新 filteredItems
+			setFilteredItems(updatedCodeContexts);
+
+			// 向后端发送删除请求
+			let dataformat = {
+				key: activeTab,
+				originalItem: JSON.stringify(deletedItem),
+			};
+			ideRequest("WorkspaceService.RemoveDataStorage", dataformat);
+
+			// ------ 从所有 group 中切断与被删除 item 的联系 ------
+			const updatedGroups = groups.map(group => {
+				const itemMap = new Map(group.itemMap);
+				const ids = itemMap.get('FrameworkCodeFragment') || [];
+				const updatedIds = ids.filter(id => id !== deletedItem.id);
+				itemMap.set('FrameworkCodeFragment', updatedIds);
+				return { ...group, itemMap };
+			});
+			setGroups(updatedGroups);
+
+			// 向后端发送 RemoveGroupItems 请求
+			const needDeletedItemIdsMap = new Map<string, string[]>();
+			needDeletedItemIdsMap.set('FrameworkCodeFragment', [deletedItem.id]);
+			const needDeletedItemIdsMapJsonString = JSON.stringify(Object.fromEntries(needDeletedItemIdsMap));
+			ideRequest("WorkspaceService.Groups.RemoveGroupItems", { groupName: "all", needDeletedItemIdsMapJsonString });
+			// ------ 修改结束 ------
 		}
 	};
 	const clearForm = () => {
