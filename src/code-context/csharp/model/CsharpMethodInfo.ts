@@ -22,7 +22,7 @@ export class CsharpMethodInfo extends MethodInfoBase {
 		this.returnType = methodNameAndReturnType[0];
 		this.methodDoc = methodXmlDocTeam.reverse().toString();
 		this.code = methodNode.text;
-		this.codeBody= this.getCodeBody();
+		this.codeBody = this.getCodeBody();
 	}
 	protected override getMethodDoc(): string {
 		return this.getMethodXmlDocTeam(this.node).reverse().toString();
@@ -33,15 +33,14 @@ export class CsharpMethodInfo extends MethodInfoBase {
 	protected override getName(): string {
 		return this.getMethodNameAndReturnType(this.node)[0];
 	}
-protected override getCodeBody(): string {
-	for (const item of this.node.children) {
+	protected override getCodeBody(): string {
+		for (const item of this.node.children) {
 			if (item.type === 'block') {
 				return item.text;
 			}
 		}
 		return '';
-
-}
+	}
 	// 获取方法的 XML 注释
 	getMethodXmlDocTeam(methodNode: Parser.SyntaxNode): string[] {
 		const xmlDocNode = methodNode.previousSibling;
@@ -89,21 +88,27 @@ protected override getCodeBody(): string {
 	}
 	// 获取方法参数
 	getMethodParameters(methodNode: Parser.SyntaxNode, methoddocTeam: string[]): IParameterInfo[] {
-		const parameterListNode = methodNode.children.find(item => {
+		let parameterListNode = methodNode.children.find(item => {
 			return item.type == 'parameter_list';
 		});
-		const parameterInfos: IParameterInfo[] = [];
+		let parameterInfos: IParameterInfo[] = [];
 		if (parameterListNode) {
-			const parameterNodes = parameterListNode.children.filter(item => {
+			let parameterNodes = parameterListNode.children.filter(item => {
 				return item.type == 'parameter';
 			});
 			for (const item of parameterNodes) {
-				const identifiers = item.children.filter(item => {
-					return item.type == 'identifier';
+				let identifiers = item.children.filter(item => {
+					return item.type == 'identifier'|| item.type == 'predefined_type';
 				});
+				let paramDoc: string | undefined = '';
+				let lastIdentifier = identifiers[identifiers.length - 1];
+				let paramName= lastIdentifier.text;
 
-				const paramDoc = methoddocTeam.find(item => item.includes(identifiers[1].text));
-				const param = {
+				if (methoddocTeam.length > 0||identifiers) {
+					paramDoc = methoddocTeam.find(item => item.includes(paramName));
+				}
+
+				let param = {
 					type: identifiers[0].text,
 					name: identifiers[1].text,
 					doc: paramDoc,
