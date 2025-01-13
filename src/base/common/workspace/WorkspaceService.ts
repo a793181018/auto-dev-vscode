@@ -54,30 +54,14 @@ export class WorkspaceService implements Service {
             }
         });
 
-        vscode.workspace.onDidSaveTextDocument(document => {
-            this.handleDocumentEvent(document);
-        });
 
         vscode.workspace.onDidOpenTextDocument(async document => {
             await this.refreshDataStorageIds(document);
         });
 
-        // 监听编程语言切换事件
-        vscode.window.onDidChangeActiveTextEditor(async editor => {
-            if (editor) {
-							vscode.commands.executeCommand('vscode.executeCodeLensProvider', editor.document.uri);
-            }
-        });
-				vscode.workspace.onDidSaveTextDocument((document) => {
-					if (document) {
-						vscode.commands.executeCommand('vscode.executeCodeLensProvider', document.uri);
-					}
-			});
-    vscode.workspace.onDidChangeTextDocument((event) => {
-			if (event) {
-				vscode.commands.executeCommand('vscode.executeCodeLensProvider', event.document.uri);
-			}
-	});
+
+
+
     }
 
     private async handleDocumentEvent(document: TextDocument) {

@@ -281,7 +281,7 @@ class TreeSitterContentModifier {
 			} else if (child.parent && child.type === 'arrow_expression_clause') {
 				if (child.parent.type === 'property_declaration' || child.parent.type == 'indexer_declaration') {
 					// 删除上一个节点到当前节点之间的内容，并替换为 "{ get; }"
-					rootContent = rootContent.slice(0, previousEndIndex) + '{ get; }' + rootContent.slice(childEndIndex);
+					rootContent = rootContent.slice(0, previousEndIndex) + '{ get; }\n' + rootContent.slice(childEndIndex);
 				}else if (child.parent.type === 'method_declaration') {
 					const char = rootContent.charAt(previousEndIndex);
 					let previousOffSetEndIndex=previousEndIndex;
@@ -301,7 +301,7 @@ class TreeSitterContentModifier {
 					rootContent = rootContent.slice(0, previousOffSetEndIndex) + ';\n\t' + rootContent.slice(childEndIndex);
 				}
 			} else if (child.parent && child.type === 'field_declaration') {
-				rootContent = rootContent.slice(0, previousEndIndex) + ';\n\t' + rootContent.slice(childEndIndex);
+				rootContent = rootContent.slice(0, previousEndIndex) +'\n\t' + rootContent.slice(childEndIndex);
 			} else if (child.parent && child.parent.type === 'constructor_declaration' && child.type === 'block') {
 				const char = rootContent.charAt(previousEndIndex);
 				let previousOffSetEndIndex=previousEndIndex;

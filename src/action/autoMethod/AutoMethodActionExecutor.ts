@@ -1,33 +1,33 @@
 import fs from 'fs';
 import { AutoDevExtension } from 'src/AutoDevExtension';
+import { FrameworkCodeFragment } from 'src/code-context/_base/LanguageModel/ClassElement/FrameworkCodeFragmentExtractorBase';
+import { MethodInfoBase } from 'src/code-context/_base/LanguageModel/ClassElement/MethodInfoBase';
+import { ClassExtractorFactory } from 'src/code-context/_base/LanguageModel/ClassELementFactory/ClassExtarctorFactory';
+import { MethodInfoFactory } from 'src/code-context/_base/LanguageModel/ClassELementFactory/MethodInfoFactory';
+import { CsharpClassExtractor } from 'src/code-context/csharp/model/CsharpClassExtractor';
 import { Position, TextDocument, WorkspaceEdit } from 'vscode';
 import vscode from 'vscode';
 
 import { ChatMessageRole, IChatMessage } from 'base/common/language-models/languageModels';
 import { LanguageModelsService } from 'base/common/language-models/languageModelsService';
 import { LANGUAGE_BLOCK_COMMENT_MAP } from 'base/common/languages/docstring';
-import { log } from 'base/common/log/log';
+import { log, logger } from 'base/common/log/log';
 import { MarkdownTextProcessor } from 'base/common/markdown/MarkdownTextProcessor';
 import { StreamingMarkdownCodeBlock } from 'base/common/markdown/StreamingMarkdownCodeBlock';
 
 import { type NamedElement } from '../../editor/ast/NamedElement';
-import { insertCodeByRange, selectCodeInRange } from '../../editor/ast/PositionUtil';
+import {  selectCodeInRange } from '../../editor/ast/PositionUtil';
 import { AutoDevStatus, AutoDevStatusManager } from '../../editor/editor-api/AutoDevStatusManager';
 import { ActionType } from '../../prompt-manage/ActionType';
 import { PromptManager } from '../../prompt-manage/PromptManager';
 import { CreateToolchainContext } from '../../toolchain-context/ToolchainContextProvider';
 import { ActionExecutor } from '../_base/ActionExecutor';
-import { AutoMethodTemplateContext } from './AutoMethodTemplateContext';
-import { CsharpClassExtractor } from 'src/code-context/csharp/model/CsharpClassExtractor';
 import { CodeSample } from '../addCodeSamples/AddCodeSampleExecutor';
-import { FrameworkCodeFragment } from 'src/code-context/_base/LanguageModel/ClassElement/FrameworkCodeFragmentExtractorBase';
-import { ClassExtractorFactory } from 'src/code-context/_base/LanguageModel/ClassELementFactory/ClassExtarctorFactory';
-import { MethodInfoBase } from 'src/code-context/_base/LanguageModel/ClassElement/MethodInfoBase';
-import { MethodInfoFactory } from 'src/code-context/_base/LanguageModel/ClassELementFactory/MethodInfoFactory';
+import { AutoMethodTemplateContext } from './AutoMethodTemplateContext';
 
 export class AutoMethodActionExecutor implements ActionExecutor {
 	type: ActionType = ActionType.AutoDoc;
-	public static readonly LanguageSupport:Set<string>=new Set<string>(["csharp"])
+	public static readonly LanguageSupport: Set<string> = new Set<string>(['csharp']);
 	private lm: LanguageModelsService;
 	private promptManager: PromptManager;
 	private statusBarManager: AutoDevStatusManager;
@@ -51,7 +51,6 @@ export class AutoMethodActionExecutor implements ActionExecutor {
 	}
 
 	async execute() {
-
 		const document = this.document;
 		const range = this.range;
 		const language = document.languageId;
@@ -59,34 +58,39 @@ export class AutoMethodActionExecutor implements ActionExecutor {
 		const startSymbol = LANGUAGE_BLOCK_COMMENT_MAP[language]!.start;
 		const endSymbol = LANGUAGE_BLOCK_COMMENT_MAP[language]!.end;
 
-    const classExtractor=ClassExtractorFactory.createInstance(language,range.node.parent?.parent!);
-    const classInfo=classExtractor.ExtractClass();
-    let selectGroup=this.autodev.workSpace.DataStorageGroupManager?.GetSelectedGroup();
-		let codeSampleIds=selectGroup?.get(CodeSample.name);
-		let codeSamples:CodeSample[]=[];
-		let customFrameworkCodeFragments:FrameworkCodeFragment[]=[];
-		let customFrameworkCodeFragmentIds=selectGroup?.get(FrameworkCodeFragment.name);
-		if(customFrameworkCodeFragmentIds!=undefined)
-		{
-      customFrameworkCodeFragments=this.autodev.workSpace.GetDataStoragesByIds(language,FrameworkCodeFragment.name,customFrameworkCodeFragmentIds) as FrameworkCodeFragment[]
+		const classExtractor = ClassExtractorFactory.createInstance(language, range.node.parent?.parent!);
+		const classInfo = classExtractor.ExtractClass();
+		let selectGroup = this.autodev.workSpace.DataStorageGroupManager?.GetSelectedGroup();
+		let codeSampleIds = selectGroup?.get(CodeSample.name);
+		let codeSamples: CodeSample[] = [];
+		let customFrameworkCodeFragments: FrameworkCodeFragment[] = [];
+		let customFrameworkCodeFragmentIds = selectGroup?.get(FrameworkCodeFragment.name);
+		if (customFrameworkCodeFragmentIds != undefined) {
+			customFrameworkCodeFragments = this.autodev.workSpace.GetDataStoragesByIds(
+				language,
+				FrameworkCodeFragment.name,
+				customFrameworkCodeFragmentIds,
+			) as FrameworkCodeFragment[];
 		}
-		if(codeSampleIds!=undefined)
-		{
-      codeSamples=this.autodev.workSpace.GetDataStoragesByIds(language,CodeSample.name,codeSampleIds) as CodeSample[]
+		if (codeSampleIds != undefined) {
+			codeSamples = this.autodev.workSpace.GetDataStoragesByIds(
+				language,
+				CodeSample.name,
+				codeSampleIds,
+			) as CodeSample[];
 		}
-   let needCompletedMethud=MethodInfoFactory.createInstance(language,range.node);
-		const templateContext: AutoMethodTemplateContext ={
+		let needCompletedMethud = MethodInfoFactory.createInstance(language, range.node);
+		const templateContext: AutoMethodTemplateContext = {
 			language: language,
 			startSymbol: startSymbol,
-			needCompleteMethod:needCompletedMethud,
+			needCompleteMethod: needCompletedMethud,
 			endSymbol: endSymbol,
 			code: document.getText(range.blockRange),
 			forbiddenRules: [],
-			classInfo:classInfo,
-			customFrameworkCodeFragments:customFrameworkCodeFragments,
-		  codeSamples:codeSamples
+			classInfo: classInfo,
+			customFrameworkCodeFragments: customFrameworkCodeFragments,
+			codeSamples: codeSamples,
 		};
-
 
 		this.statusBarManager.setStatus(AutoDevStatus.InProgress);
 
@@ -111,8 +115,8 @@ export class AutoMethodActionExecutor implements ActionExecutor {
 
 		let content = await this.promptManager.generateInstruction(ActionType.AutoMethod, templateContext);
 		log(`request: ${content}`);
-		console.log(`输入LLM推理数据: ${content}`);
-
+		logger.info(`输入LLM推理数据:\n ${content}`);
+		console.log(`输入LLM推理数据:\n ${content}`);
 		let msg: IChatMessage = {
 			role: ChatMessageRole.User,
 			content: content,
@@ -125,21 +129,22 @@ export class AutoMethodActionExecutor implements ActionExecutor {
 			const finalText = StreamingMarkdownCodeBlock.parse(doc).text;
 
 			log(`FencedCodeBlock parsed output: ${finalText}`);
+			logger.info(`输出LLM推理结果: \n ${finalText}`);
 			console.log(`输出LLM推理结果: \n ${finalText}`);
 
-			let codestring = MarkdownTextProcessor.buildDocFromSuggestion(doc, startSymbol, endSymbol);
+        const generatedCodeBlock = finalText;
+        const codeToReplace = `${startSymbol}\n${generatedCodeBlock}\n${endSymbol}`;
 
-			let startLine = range.blockRange.start.line;
-			let startChar = range.blockRange.start.character;
+        // 获取替换的范围
+        const startPosition = new Position(range.blockRange.start.line, range.blockRange.start.character);
+        const endPosition = new Position(range.blockRange.end.line, range.blockRange.end.character);
 
-			if (startLine === 0) {
-				startLine = 1;
-			}
+        // 创建 WorkspaceEdit 对象
+        const edit = new WorkspaceEdit();
+        edit.replace(document.uri, new vscode.Range(startPosition, endPosition), codeToReplace);
 
-			// todo: add format by indent.
-
-			const textRange: Position = new Position(startLine - 1, startChar);
-			insertCodeByRange(textRange, codestring);
+        // 应用替换
+        await vscode.workspace.applyEdit(edit);
 		} catch (e) {
 			console.error(e);
 			this.statusBarManager.setStatus(AutoDevStatus.Error);

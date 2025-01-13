@@ -52,6 +52,7 @@ import { CsharpFieldInfo } from './code-context/csharp/model/CsharpFieldInfo';
 import { FieldInfoFactory } from './code-context/_base/LanguageModel/ClassELementFactory/FieldInfoFactory';
 import { MethodInfoFactory } from './code-context/_base/LanguageModel/ClassELementFactory/MethodInfoFactory';
 import { CsharpMethodInfo } from './code-context/csharp/model/CsharpMethodInfo';
+import { RemoveFrameworkCodeFragmentExecutor } from './action/removeCodeFragment/RemoveFrameworkCodeFragmentExecutor';
 
 @injectable()
 export class AutoDevExtension {
@@ -247,6 +248,7 @@ export class AutoDevExtension {
 	executeAutoMethodAction(document: TextDocument, nameElement: NamedElement, edit?: WorkspaceEdit) {
 		return new AutoMethodActionExecutor(this, document, nameElement, edit).execute();
 	}
+
 	executeAutoClassAction(document: TextDocument, nameElement: NamedElement, edit?: WorkspaceEdit) {
 		console.error('executeAutoClassAction not completed');
 		//return new AutoMethodActionExecutor(this, document, nameElement, edit).execute();
@@ -263,7 +265,7 @@ export class AutoDevExtension {
 	}
 
 	executeRemoveFrameworkCodeFragmentAction(document: TextDocument, nameElement: NamedElement, edit?: WorkspaceEdit) {
-		return new RemoveCodeSampleExecutor(this, document, nameElement, edit).execute();
+		return new RemoveFrameworkCodeFragmentExecutor(this, document, nameElement, edit).execute();
 	}
 
 	executeAutoTestAction(document: TextDocument, nameElement: NamedElement, edit?: WorkspaceEdit) {

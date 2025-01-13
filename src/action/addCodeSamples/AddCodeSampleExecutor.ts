@@ -107,6 +107,7 @@ export class CodeSample  implements IDataStorage {
 	 codeSample.doc = data.doc;
 	 codeSample.filePath = data.filePath;
 	 codeSample.codeContext = data.codeContext;
+	 codeSample.id = data.id;
 		return codeSample;
 	}
 	public static DeserializationFormSql(data: any): CodeSample {

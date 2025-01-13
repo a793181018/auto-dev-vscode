@@ -11,6 +11,7 @@ import { TreeSitterFile } from '../../code-context/ast/TreeSitterFile';
 export class TreeSitterFileManager implements vscode.Disposable {
 	private documentUpdateListener: vscode.Disposable;
 	private didOpenTextDocument: vscode.Disposable;
+	private didSaveTextDocument: vscode.Disposable;
 	private cache: LRUCache<Uri, TreeSitterFile> = new LRUCache({ max: 20 });
 
 	constructor(private lsp: ILanguageServiceProvider) {
@@ -33,6 +34,13 @@ export class TreeSitterFileManager implements vscode.Disposable {
 
 			await this.recreate(document);
 		});
+		this.didSaveTextDocument = vscode.workspace.onDidSaveTextDocument(async document => {
+			if (!isSupportedLanguage(document.languageId)) {
+				return;
+			}
+
+			await this.recreate(document);
+		})
 	}
 
 	// TODO: register all languages
@@ -115,6 +123,7 @@ export class TreeSitterFileManager implements vscode.Disposable {
 	dispose() {
 		this.documentUpdateListener?.dispose();
 		this.didOpenTextDocument?.dispose();
+		this.didSaveTextDocument?.dispose();
 	}
 
 	public setDocument(uri: Uri, file: TreeSitterFile): void {
